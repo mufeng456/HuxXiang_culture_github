@@ -1,4 +1,4 @@
-<template>
+      <template>
   <div class="digital-showcase-page">
     <!-- 主标题区域 -->
     <div class="section-title">
@@ -23,7 +23,7 @@
         </div>
         
         <div class="showcase-item">
-          <router-link to="/unity" class="showcase-link">
+          <router-link to="/unity-webgl" class="showcase-link">
             <div class="showcase-icon">
               <i class="fas fa-vr-cardboard fa-3x"></i>
             </div>
@@ -59,7 +59,7 @@
       <h3 class="category-title">数字博物馆</h3>
       <div class="showcase-grid">
         <div class="showcase-item">
-          <router-link to="/unity">
+          <router-link to="/unity-webgl">
             <div class="showcase-icon">
               <i class="fas fa-museum fa-3x"></i>
             </div>

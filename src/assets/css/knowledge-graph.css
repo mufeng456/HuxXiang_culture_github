@@ -76,90 +76,47 @@
   background-color: var(--graph-bg);
 }
 
-/* 节点样式 - 按层级区分 */
+/* 节点样式 */
 .graph-node {
   cursor: pointer;
   transition: all 0.3s ease;
-}
-
-.graph-node-level-1 {
-  fill: var(--graph-primary-color);
   stroke: white;
   stroke-width: 2px;
-  r: 25px;
 }
 
-.graph-node-level-2 {
-  fill: var(--graph-secondary-color);
-  stroke: white;
-  stroke-width: 2px;
-  r: 20px;
-}
-
-.graph-node-level-3 {
-  fill: var(--graph-tertiary-color);
-  stroke: white;
-  stroke-width: 2px;
-  r: 16px;
-}
-
-.graph-node-level-4 {
-  fill: var(--graph-quaternary-color);
-  stroke: white;
-  stroke-width: 2px;
-  r: 14px;
-}
-
-.graph-node-level-5 {
-  fill: var(--graph-quinary-color);
-  stroke: white;
-  stroke-width: 2px;
-  r: 12px;
+/* 节点悬停效果 */
+.graph-node:hover {
+  filter: brightness(1.2);
+  transform: scale(1.1);
+  stroke: #333;
+  stroke-width: 2.5px;
 }
 
 /* 节点文本样式 */
 .graph-node-text {
-  font-family: var(--font-family);
-  font-size: 12px;
+  font-family: "Microsoft YaHei", "SimHei", sans-serif;
+  font-size: 14px;
   text-anchor: middle;
   dominant-baseline: middle;
-  fill: black;
-  font-weight: 500;
+  fill: white;
+  font-weight: 700;
   pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-/* 连接线样式 - 按层级区分 */
+/* 连接线样式 */
 .graph-link {
   fill: none;
-  stroke: var(--graph-link);
+  stroke: #95a5a6;
   stroke-width: 2px;
-  opacity: 0.8;
+  opacity: 0.7;
   transition: all 0.3s ease;
 }
 
-.graph-link-level-1 {
-  stroke: var(--graph-primary-color);
+/* 连接线悬停效果 */
+.graph-link:hover {
   stroke-width: 3px;
-}
-
-.graph-link-level-2 {
-  stroke: var(--graph-secondary-color);
-  stroke-width: 2.5px;
-}
-
-.graph-link-level-3 {
-  stroke: var(--graph-tertiary-color);
-  stroke-width: 2px;
-}
-
-.graph-link-level-4 {
-  stroke: var(--graph-quaternary-color);
-  stroke-width: 1.5px;
-}
-
-.graph-link-level-5 {
-  stroke: var(--graph-quinary-color);
-  stroke-width: 1px;
+  opacity: 0.9;
 }
 
 /* 箭头标记样式 */
@@ -194,7 +151,7 @@
   transform: scale(1.1);
 }
 
-.graph-node:hover + .graph-node-text {
+.graph-node:hover+.graph-node-text {
   font-weight: bold;
 }
 
@@ -207,14 +164,58 @@
 /* 缩放控制提示 */
 .zoom-hint {
   position: absolute;
-  bottom: 20px;
-  right: 20px;
+  top: 20px;
+  left: 20px;
   background-color: rgba(0, 0, 0, 0.7);
   color: white;
   padding: 10px 15px;
   border-radius: 6px;
   font-size: 0.9rem;
   z-index: 10;
+}
+
+/* 图例样式 */
+.graph-legend {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.graph-legend h4 {
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  color: #333;
+  font-weight: 600;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.legend-item:last-child {
+  margin-bottom: 0;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  margin-right: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.legend-item span {
+  font-size: 0.9rem;
+  color: #555;
+  font-weight: 500;
 }
 
 /* 加载状态样式 */

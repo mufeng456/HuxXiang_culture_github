@@ -179,6 +179,15 @@ export default {
           </ul>
         </div>
         <div class="footer-column">
+          <h3><i class="fas fa-laptop-code"></i> 数字化展示</h3>
+          <ul>
+            <li><a href="#" @click.prevent="navigateTo('digital-showcase')">核心数字化体验</a></li>
+            <li><a href="#" @click.prevent="navigateTo('digital-showcase')">数字博物馆</a></li>
+            <li><a href="#" @click.prevent="navigateTo('digital-showcase')">互动文化体验</a></li>
+            <li><a href="#" @click.prevent="navigateTo('digital-showcase')">特色专题</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
           <h3><i class="fas fa-users"></i> 互动社区</h3>
           <ul>
             <li><a href="#" @click.prevent="navigateTo('community')">文化论坛</a></li>

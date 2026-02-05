@@ -1,5 +1,13 @@
 <template>
   <div class="knowledge-graph-container">
+    <!-- 返回按钮 -->
+    <div class="back-button-container">
+      <button class="back-button" @click="goBack">
+        <i class="fas fa-arrow-left"></i>
+        <span>返回数字化展示</span>
+      </button>
+    </div>
+    
     <div class="knowledge-graph-wrapper">
       <!-- 图谱头部 -->
       <div class="graph-header">
@@ -34,6 +42,22 @@
         <div class="zoom-hint">
           <i class="fas fa-search-plus"></i> 鼠标滚轮缩放 | <i class="fas fa-hand-pointer"></i> 拖拽移动
         </div>
+        <!-- 图例 -->
+        <div class="graph-legend">
+          <h4>图例</h4>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: #2ecc71;"></div>
+            <span>历史人物</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: #e74c3c;"></div>
+            <span>历史遗迹</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: #9b59b6;"></div>
+            <span>遗产文化</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -41,14 +65,21 @@
 
 <script>
 import { ref, onMounted, onUnmounted, computed, inject } from 'vue'
+import { useRouter } from 'vue-router'
 import '../assets/css/knowledge-graph.css'
 
 export default {
   name: 'KnowledgeGraphPage',
 
   setup() {
-    // 获取全局事件总线
+    // 获取全局事件总线和路由实例
     const eventBus = inject('$eventBus')
+    const router = useRouter()
+    
+    // 返回上一页
+    const goBack = () => {
+      router.back()
+    }
     
     // 显示提示消息
     const showAlert = (message, type = 'info') => {
@@ -326,8 +357,12 @@ export default {
           // 设置路径
           const d = `M ${source.x},${source.y} C ${tx},${ty} ${tx2},${ty2} ${target.x},${target.y}`
           line.setAttribute('d', d)
-          line.setAttribute('class', `graph-link graph-link-level-${link.level}`)
-          line.setAttribute('marker-end', `url(#arrowhead-${link.level})`)
+          line.setAttribute('class', `graph-link`)
+          // 统一使用浅灰色连接线
+          line.setAttribute('stroke', '#95a5a6')
+          line.setAttribute('stroke-width', '2px')
+          line.setAttribute('fill', 'none')
+          line.setAttribute('opacity', '0.7')
           
           // 添加点击事件
           line.addEventListener('click', () => {
@@ -363,13 +398,27 @@ export default {
         circle.setAttribute('r', radius);
         circle.setAttribute('class', `graph-node`);
         
-        // 根据层级设置颜色
+        // 根据分类设置颜色
         if (node.level === 1) {
-          circle.setAttribute('fill', '#3498db'); // 蓝色
-        } else if (node.level === 2) {
+          circle.setAttribute('fill', '#3498db'); // 湖湘文化主节点 - 蓝色
+        } else if (node.id === 2) { // 历史人物分类
           circle.setAttribute('fill', '#2ecc71'); // 绿色
-        } else {
+        } else if (node.id === 3) { // 历史遗迹分类
           circle.setAttribute('fill', '#e74c3c'); // 红色
+        } else if (node.id === 4) { // 遗产文化分类
+          circle.setAttribute('fill', '#9b59b6'); // 紫色
+        } else {
+          // 第三层节点：根据所属分类设置颜色
+          const parentLink = links.value.find(link => link.target === node.id && link.level === 2);
+          if (parentLink) {
+            if (parentLink.source === 2) { // 属于历史人物
+              circle.setAttribute('fill', '#2ecc71'); // 绿色
+            } else if (parentLink.source === 3) { // 属于历史遗迹
+              circle.setAttribute('fill', '#e74c3c'); // 红色
+            } else if (parentLink.source === 4) { // 属于遗产文化
+              circle.setAttribute('fill', '#9b59b6'); // 紫色
+            }
+          }
         }
         
         circle.setAttribute('stroke', 'white');
@@ -414,7 +463,13 @@ export default {
         text.setAttribute('y', node.y)
         text.setAttribute('class', 'graph-node-text')
         text.textContent = node.name
-        
+        // 设置字体样式
+        text.setAttribute('font-size', '14px')
+        text.setAttribute('font-family', '"Microsoft YaHei", "SimHei", sans-serif')
+        text.setAttribute('fill', 'white')
+        text.setAttribute('font-weight', '700')
+        text.setAttribute('text-anchor', 'middle')
+        text.setAttribute('dominant-baseline', 'middle')
         g.appendChild(text)
       })
     }
@@ -530,13 +585,58 @@ export default {
       startDrag,
       handleDrag,
       endDrag,
-      toggleAnimation
+      toggleAnimation,
+      goBack
     }
   }
 }
 </script>
 
 <style scoped>
+/* 返回按钮样式 */
+.back-button-container {
+  position: fixed;
+  top: 2rem;
+  left: 2rem;
+  z-index: 1000;
+}
+
+.back-button {
+  background: #C8102E;
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 25px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(200, 16, 46, 0.3);
+}
+
+.back-button:hover {
+  background: #a60e24;
+  transform: translateX(-5px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(200, 16, 46, 0.4);
+  animation: backButtonFloat 1.5s infinite;
+}
+
+.back-button i {
+  font-size: 1.1rem;
+}
+
+@keyframes backButtonFloat {
+  0%, 100% {
+    transform: translateX(-5px) scale(1.05);
+  }
+  50% {
+    transform: translateX(0px) scale(1.05);
+  }
+}
+
 /* 知识图谱容器样式补充 */
 .knowledge-graph-container {
   padding-top: 20px;

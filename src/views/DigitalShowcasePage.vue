@@ -12,23 +12,25 @@
       <h3 class="category-title">核心数字化体验</h3>
       <div class="showcase-grid">
         <div class="showcase-item">
-          <router-link to="/knowledge-graph">
+          <router-link to="/knowledge-graph" class="showcase-link">
             <div class="showcase-icon">
               <i class="fas fa-project-diagram fa-3x"></i>
             </div>
             <h3>文化知识图谱</h3>
             <p>通过可视化图谱展示湖湘文化各元素之间的关联关系</p>
+            <button class="start-btn">开始查看</button>
           </router-link>
         </div>
         
         <div class="showcase-item">
-          <a href="/unity" target="_blank">
+          <router-link to="/unity" class="showcase-link">
             <div class="showcase-icon">
               <i class="fas fa-vr-cardboard fa-3x"></i>
             </div>
             <h3>虚拟现实体验</h3>
             <p>沉浸式VR体验湖湘文化名胜古迹</p>
-          </a>
+            <button class="start-btn">开始体验</button>
+          </router-link>
         </div>
         
         <div class="showcase-item">
@@ -42,13 +44,14 @@
         </div>
         
         <div class="showcase-item">
-          <a href="#" @click.prevent="showAlert('AI文化助手功能即将上线！')">
+          <router-link to="/ai-assistant" class="ai-assistant-link">
             <div class="showcase-icon">
               <i class="fas fa-robot fa-3x"></i>
             </div>
             <h3>AI文化助手</h3>
             <p>智能问答系统，解答您的湖湘文化问题</p>
-          </a>
+            <button class="start-ai-btn">开始对话</button>
+          </router-link>
         </div>
       </div>
 
@@ -400,6 +403,196 @@ const showAlert = (message, type = 'info') => {
 
 .topic-btn:active {
   transform: translateY(0);
+}
+
+/* AI文化助手样式 */
+.ai-assistant-placeholder {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-assistant-placeholder:hover {
+  transform: translateY(-5px);
+}
+
+.start-ai-btn {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.8rem;
+  border-radius: 25px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1.5rem;
+  box-shadow: 0 4px 12px rgba(200, 16, 46, 0.3);
+}
+
+.start-ai-btn:hover {
+  background-color: #a60e24;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(200, 16, 46, 0.4);
+}
+
+.start-ai-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(200, 16, 46, 0.3);
+}
+
+.ai-assistant-item {
+  grid-column: 1 / -1;
+  min-height: 600px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0.2rem;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(90deg);
+}
+
+.menu-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  background: var(--primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.menu-header h4 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.ai-assistant-container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* 左侧菜单样式 */
+.ai-menu {
+  width: 250px;
+  background: #f8f9fa;
+  border-right: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  background: var(--primary-color);
+  color: white;
+}
+
+.menu-header h4 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.menu-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-left: 3px solid transparent;
+}
+
+.menu-item:hover {
+  background: rgba(200, 16, 46, 0.05);
+}
+
+.menu-item.active {
+  background: rgba(200, 16, 46, 0.1);
+  border-left-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.menu-item i {
+  margin-right: 0.8rem;
+  font-size: 1.1rem;
+}
+
+/* 展示项目链接样式 */
+.showcase-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  height: 100%;
+}
+
+.ai-assistant-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  height: 100%;
+}
+
+/* 开始按钮样式 */
+.start-btn,
+.start-ai-btn {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.8rem;
+  border-radius: 25px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1.5rem;
+  box-shadow: 0 4px 12px rgba(200, 16, 46, 0.3);
+}
+
+.start-btn:hover,
+.start-ai-btn:hover {
+  background-color: #a60e24;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(200, 16, 46, 0.4);
+}
+
+.start-btn:active,
+.start-ai-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(200, 16, 46, 0.3);
 }
 
 /* 响应式设计 */

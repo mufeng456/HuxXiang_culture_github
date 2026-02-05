@@ -14,6 +14,7 @@ import RegisterView from '../views/RegisterView.vue'
 import ProfilePage from '../views/ProfilePage.vue'
 import AdminPage from '../views/AdminPage.vue'
 import PostDetailPage from '../views/PostDetailPage.vue'
+import AiAssistantPage from '../views/AiAssistantPage.vue'
 
 const routes = [
   {
@@ -56,6 +57,14 @@ const routes = [
     component: DigitalShowcasePage,
     meta: {
       title: '数字化展示 - 湖湘文化数字化平台'
+    }
+  },
+  {
+    path: '/ai-assistant',
+    name: 'ai-assistant',
+    component: AiAssistantPage,
+    meta: {
+      title: 'AI文化助手 - 湖湘文化数字化平台'
     }
   },
   {
@@ -109,11 +118,11 @@ const routes = [
     }
   },
   {
-    path: '/unity',
-    name: 'unity',
+    path: '/unity-webgl',
+    name: 'unity-webgl',
     component: UnityWebGL,
     meta: {
-      title: '数字博物馆展览 - 湖湘文化数字化平台'
+      title: '虚拟现实体验 - 湖湘文化数字化平台'
     }
   },
   {
@@ -158,11 +167,11 @@ router.beforeEach((to, from, next) => {
   if (to.meta.title) {
     document.title = to.meta.title
   }
-  
+
   // 检查用户是否已登录
   const isAuthenticated = localStorage.getItem('user') !== null
   const user = isAuthenticated ? JSON.parse(localStorage.getItem('user')) : null
-  
+
   // 如果页面需要认证
   if (to.meta.requiresAuth) {
     if (!isAuthenticated) {

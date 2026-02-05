@@ -15,23 +15,23 @@
         <!-- 导航菜单 -->
         <ul class="navbar-nav" :class="{ show: isMenuOpen }">
           <li class="nav-item">
-            <a href="#" class="nav-link" @click.prevent="navigateTo('home')">首页</a>
+            <a href="#" class="nav-link" :class="{ active: activeNavItem === 'home' }" @click.prevent="navigateTo('home')">首页</a>
           </li>
           <li class="nav-item">
-            <a href="#" class="nav-link" @click.prevent="navigateTo('cultural-resources')">文化资源</a>
+            <a href="#" class="nav-link" :class="{ active: activeNavItem === 'cultural-resources' }" @click.prevent="navigateTo('cultural-resources')">文化资源</a>
           </li>
           <li class="nav-item">
-            <a href="#" class="nav-link" @click.prevent="navigateTo('digital-showcase')">数字化展示</a>
+            <a href="#" class="nav-link" :class="{ active: activeNavItem === 'digital-showcase' }" @click.prevent="navigateTo('digital-showcase')">数字化展示</a>
           </li>
           <li class="nav-item">
-            <a href="#" class="nav-link" @click.prevent="navigateTo('community')">互动社区</a>
+            <a href="#" class="nav-link" :class="{ active: activeNavItem === 'community' }" @click.prevent="navigateTo('community')">互动社区</a>
           </li>
           <li class="nav-item">
-            <a href="#" class="nav-link" @click.prevent="navigateTo('about')">关于我们</a>
+            <a href="#" class="nav-link" :class="{ active: activeNavItem === 'about' }" @click.prevent="navigateTo('about')">关于我们</a>
           </li>
           <!-- 管理员页面导航项，只对管理员显示 -->
           <li class="nav-item" v-if="isLoggedIn && user?.isAdmin">
-            <a href="#" class="nav-link admin-link" @click.prevent="navigateTo('admin')">管理中心</a>
+            <a href="#" class="nav-link admin-link" :class="{ active: activeNavItem === 'admin' }" @click.prevent="navigateTo('admin')">管理中心</a>
           </li>
         </ul>
         
@@ -63,6 +63,7 @@
 
 <script>
 import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 
 export default {
   name: 'Navbar',
@@ -94,6 +95,7 @@ export default {
   },
   setup(props) {
     const isMenuOpen = ref(false)
+    const route = useRoute()
     
     const toggleMenu = () => {
       isMenuOpen.value = !isMenuOpen.value
@@ -109,10 +111,16 @@ export default {
       return `https://picsum.photos/seed/${initial}${props.user.id}/100`;
     })
     
+    // 计算当前激活的导航项
+    const activeNavItem = computed(() => {
+      return route.name
+    })
+    
     return {
       isMenuOpen,
       toggleMenu,
-      userAvatar
+      userAvatar,
+      activeNavItem
     }
   }
 }
@@ -187,11 +195,41 @@ header {
   text-decoration: none;
   color: var(--text-color);
   font-weight: 500;
-  transition: color 0.3s;
+  transition: all 0.3s ease;
+  position: relative;
+  padding: 0.5rem 0;
 }
 
 .nav-link:hover {
   color: var(--primary-color);
+}
+
+/* 导航链接激活状态 */
+.nav-link.active {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* 导航链接点击动画 */
+.nav-link:active {
+  transform: translateY(1px);
+}
+
+/* 导航链接底部边框动画效果 */
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: var(--primary-color);
+  transition: width 0.3s ease;
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
+  width: 100%;
 }
 
 /* 管理员导航链接样式 */

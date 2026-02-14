@@ -51,9 +51,9 @@
         
         <!-- 轮播轨道 -->
         <div class="carousel-track" :style="{ transform: `translateX(-${currentSlide * 100}%)` }">
-          <!-- 轮播项（每组3个卡片） -->
-          <div class="carousel-slide" v-for="(slide, index) in carouselSlides" :key="index">
-            <div class="resource-card" v-for="resource in slide" :key="resource.id">
+          <!-- 轮播项（每个卡片单独一页） -->
+          <div class="carousel-slide" v-for="(resource, index) in culturalResources" :key="resource.id">
+            <div class="resource-card">
               <div class="resource-image">
                 <img :src="resource.image" :alt="resource.title" loading="lazy" />
               </div>
@@ -77,8 +77,8 @@
       <!-- 轮播指示器 -->
       <div class="carousel-indicators">
         <button 
-          v-for="(slide, index) in carouselSlides" 
-          :key="index"
+          v-for="(resource, index) in culturalResources" 
+          :key="resource.id"
           class="carousel-indicator"
           :class="{ active: currentSlide === index }"
           @click="goToSlide(index)"
@@ -131,7 +131,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 export default {
@@ -249,29 +249,19 @@ export default {
     
     // 轮播图状态
     const currentSlide = ref(0)
-    let autoplayTimer = null
-    
-    // 将文化资源数据分成每组3个
-    const carouselSlides = computed(() => {
-      const slides = []
-      for (let i = 0; i < culturalResources.value.length; i += 3) {
-        slides.push(culturalResources.value.slice(i, i + 3))
-      }
-      return slides
-    })
     
     // 上一张幻灯片
     const prevSlide = () => {
       if (currentSlide.value > 0) {
         currentSlide.value--
       } else {
-        currentSlide.value = carouselSlides.value.length - 1
+        currentSlide.value = culturalResources.value.length - 1
       }
     }
     
     // 下一张幻灯片
     const nextSlide = () => {
-      if (currentSlide.value < carouselSlides.value.length - 1) {
+      if (currentSlide.value < culturalResources.value.length - 1) {
         currentSlide.value++
       } else {
         currentSlide.value = 0
@@ -281,21 +271,6 @@ export default {
     // 跳转到指定幻灯片
     const goToSlide = (index) => {
       currentSlide.value = index
-    }
-    
-    // 自动轮播
-    const startAutoplay = () => {
-      autoplayTimer = setInterval(() => {
-        nextSlide()
-      }, 5000) // 每5秒自动切换
-    }
-    
-    // 停止自动轮播
-    const stopAutoplay = () => {
-      if (autoplayTimer) {
-        clearInterval(autoplayTimer)
-        autoplayTimer = null
-      }
     }
 
     // 导航到资源页
@@ -323,12 +298,6 @@ export default {
       if (props.showAlert) {
         props.showAlert('欢迎来到湖湘文化数字资源平台！', 'success')
       }
-      startAutoplay()
-    })
-    
-    // 组件卸载时停止自动轮播
-    onUnmounted(() => {
-      stopAutoplay()
     })
 
     return {
@@ -338,7 +307,6 @@ export default {
         navigateTo,
         viewResourceDetails,
         currentSlide,
-        carouselSlides,
         prevSlide,
         nextSlide,
         goToSlide
@@ -408,10 +376,9 @@ export default {
 /* 轮播图样式 */
 .carousel-container {
   position: relative;
-  max-width: 1200px;
+  max-width: 600px;
   margin: 0 auto 3rem;
   overflow: hidden;
-  padding: 0 4rem;
 }
 
 .carousel-track {
@@ -422,8 +389,8 @@ export default {
 .carousel-slide {
   flex: 0 0 100%;
   display: flex;
-  gap: 2.5rem;
-  padding: 1rem 0;
+  justify-content: center;
+  align-items: center;
   transition: all 0.5s ease-in-out;
 }
 
@@ -431,16 +398,16 @@ export default {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(200, 16, 46, 0.9);
+  background: var(--primary-color);
   border: none;
   border-radius: 50%;
-  width: 45px;
-  height: 45px;
+  width: 50px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   color: white;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
@@ -448,17 +415,17 @@ export default {
 }
 
 .carousel-btn:hover {
-  background: rgba(200, 16, 46, 1);
-  transform: translateY(-50%) scale(1.05);
+  background: var(--secondary-color);
+  transform: translateY(-50%) scale(1.1);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
 .carousel-btn-prev {
-  left: 0.5rem;
+  left: 1rem;
 }
 
 .carousel-btn-next {
-  right: 0.5rem;
+  right: 1rem;
 }
 
 .carousel-indicators {
@@ -490,8 +457,8 @@ export default {
 
 /* 资源卡片在轮播中的样式调整 */
 .carousel-slide .resource-card {
-  flex: 1;
-  max-width: calc(33.333% - 2rem);
+  width: 100%;
+  max-width: 400px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   border-radius: 15px;
   overflow: hidden;
@@ -509,19 +476,8 @@ export default {
     max-width: 90%;
   }
   
-  .carousel-slide {
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-  
   .carousel-slide .resource-card {
-    max-width: 100%;
-  }
-  
-  .carousel-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 1rem;
+    max-width: 300px;
   }
 }
 

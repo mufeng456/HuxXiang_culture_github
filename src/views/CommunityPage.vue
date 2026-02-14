@@ -59,36 +59,41 @@
           </div>
         </div>
 
+        <!-- 加载状态 -->
+        <div v-if="loading" class="loading">
+          <p>正在加载帖子...</p>
+        </div>
+
         <!-- 论坛帖子列表 -->
-        <div class="forum-posts">
+        <div v-else class="forum-posts">
           <div v-for="post in currentPagePosts" :key="post.id" class="forum-post">
             <div class="post-header">
               <div class="post-author">
-                <img :src="post.authorAvatar" alt="Author avatar" class="author-avatar" loading="lazy" />
+                <img :src="post.author?.avatar || 'https://via.placeholder.com/40x40' " alt="Author avatar" class="author-avatar" loading="lazy" />
                 <div class="author-info">
-                  <span class="author-name">{{ post.authorName }}</span>
-                  <span class="post-date">{{ formatDate(post.createdAt) }}</span>
+                  <span class="author-name">{{ post.author?.username }}</span>
+                  <span class="post-date">{{ formatDate(post.created_at) }}</span>
                 </div>
               </div>
               <div class="post-stats">
-                <span class="stat-item"><i class="far fa-eye"></i> {{ post.views }} 浏览</span>
-                <span class="stat-item"><i class="far fa-comment"></i> {{ post.comments }} 评论</span>
-                <span class="stat-item"><i class="far fa-thumbs-up"></i> {{ post.likes }} 点赞</span>
+                <span class="stat-item"><i class="far fa-eye"></i> {{ post.view_count }} 浏览</span>
+                <span class="stat-item"><i class="far fa-comment"></i> {{ post.comment_count }} 评论</span>
+                <span class="stat-item"><i class="far fa-thumbs-up"></i> {{ post.like_count }} 点赞</span>
               </div>
             </div>
             <div class="post-content">
               <h3 class="post-title">{{ post.title }}</h3>
-              <p class="post-excerpt">{{ post.excerpt }}</p>
+              <p class="post-excerpt">{{ post.summary }}</p>
             </div>
             <div class="post-footer">
-              <span class="post-category">{{ post.category }}</span>
+              <span class="post-category">{{ getCategoryLabel(post.category) }}</span>
               <button class="view-post-btn" @click="viewPostDetails(post.id)">查看详情</button>
             </div>
           </div>
         </div>
 
         <!-- 分页 -->
-        <div class="pagination">
+        <div v-if="!loading && forumPosts.length > 0" class="pagination">
           <button class="pagination-btn" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">
             上一页
           </button>
@@ -202,11 +207,11 @@
           <div v-for="item in recentFeedback" :key="item.id" class="feedback-item">
             <div class="feedback-header">
               <span class="feedback-type">{{ item.type }}</span>
-              <span class="feedback-date">{{ formatDate(item.date) }}</span>
+              <span class="feedback-date">{{ item.date }}</span>
             </div>
             <p class="feedback-question">{{ item.question }}</p>
-            <div class="feedback-reply" v-if="item.reply">
-              <p><strong>管理员回复:</strong> {{ item.reply }}</p>
+            <div class="feedback-reply">
+              <p>{{ item.reply }}</p>
             </div>
           </div>
         </div>
@@ -216,8 +221,9 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { request } from '@/services/api.js'
 
 export default {
   name: 'CommunityPage',
@@ -234,119 +240,11 @@ export default {
     const activeTab = ref('forum')
     const currentPage = ref(1)
     const forumSortBy = ref('latest')
-    const forumPages = ref(3)
+    const forumPages = ref(1)
+    const loading = ref(true)
     
-    // 论坛帖子数据
-    const forumPosts = ref([
-      {
-        id: '1',
-        title: '探讨湖湘文化的现代传承与发展',
-        excerpt: '湖湘文化作为中国传统文化的重要组成部分，在现代社会如何更好地传承和发展是一个值得思考的问题...',
-        authorName: '文化探索者',
-        authorAvatar: 'https://picsum.photos/seed/user1/100/100',
-        createdAt: '2023-06-15',
-        views: 528,
-        comments: 42,
-        likes: 89,
-        category: '文化讨论'
-      },
-      {
-        id: '2',
-        title: '岳麓书院的历史与文化价值',
-        excerpt: '岳麓书院是中国古代四大书院之一，位于湖南省长沙市岳麓山下，是湖湘文化的重要载体...',
-        authorName: '历史学者',
-        authorAvatar: 'https://picsum.photos/seed/user2/100/100',
-        createdAt: '2023-06-10',
-        views: 389,
-        comments: 27,
-        likes: 65,
-        category: '历史研究'
-      },
-      {
-        id: '3',
-        title: '湘绣艺术的魅力与传承',
-        excerpt: '湘绣是中国四大名绣之一，起源于湖南省长沙、湘潭一带，具有悠久的历史和独特的艺术风格...',
-        authorName: '艺术爱好者',
-        authorAvatar: 'https://picsum.photos/seed/user3/100/100',
-        createdAt: '2023-06-05',
-        views: 412,
-        comments: 33,
-        likes: 76,
-        category: '传统艺术'
-      },
-      {
-        id: '4',
-        title: '桃花源记：探寻陶渊明笔下的湘楚秘境',
-        excerpt: '《桃花源记》的常德原型，为何能成为湖湘文化里的“精神原乡”？',
-        authorName: '文化探索者',
-        authorAvatar: 'https://picsum.photos/seed/user4/100/100',
-        createdAt: '2023-05-30',
-        views: 678,
-        comments: 54,
-        likes: 123,
-        category: '文化讨论'
-      },
-      {
-        id: '5',
-        title: '湘菜：辣里寻味的湖湘烟火气',
-        excerpt: '不止于辣！湘菜的百味江湖，藏着怎样的湖湘性格？',
-        authorName: '美食爱好者',
-        authorAvatar: 'https://picsum.photos/seed/user5/100/100',
-        createdAt: '2023-05-25',
-        views: 892,
-        comments: 76,
-        likes: 156,
-        category: '饮食文化'
-      },
-      {
-        id: '6',
-        title: '衡山：寿岳之山的千年香火与文化传承',
-        excerpt: '南岳衡山，为何能成为湖湘大地的信仰高地与自然秘境？',
-        authorName: '山水行者',
-        authorAvatar: 'https://picsum.photos/seed/user6/100/100',
-        createdAt: '2023-05-20',
-        views: 567,
-        comments: 43,
-        likes: 98,
-        category: '自然文化'
-      },
-      {
-        id: '7',
-        title: '花鼓戏：乡音里的湖湘百态',
-        excerpt: '一口乡音入戏来！湖南花鼓戏，如何守住湖湘的文化根脉？',
-        authorName: '戏曲爱好者',
-        authorAvatar: 'https://picsum.photos/seed/user7/100/100',
-        createdAt: '2023-05-15',
-        views: 432,
-        comments: 31,
-        likes: 76,
-        category: '传统艺术'
-      },
-      {
-        id: '8',
-        title: '马王堆汉墓：穿越千年的湘楚文明密码',
-        excerpt: '马王堆汉墓的惊世发掘，如何改写我们对汉代湘楚文明的认知？',
-        authorName: '考古爱好者',
-        authorAvatar: 'https://picsum.photos/seed/user8/100/100',
-        createdAt: '2023-05-10',
-        views: 789,
-        comments: 65,
-        likes: 143,
-        category: '历史研究'
-      },
-      {
-        id: '9',
-        title: '铜官窑：黑石号上的大唐湘瓷传奇',
-        excerpt: '长沙铜官窑，为何能成为大唐海上丝绸之路的“陶瓷名片”？',
-        authorName: '陶瓷爱好者',
-        authorAvatar: 'https://picsum.photos/seed/user9/100/100',
-        createdAt: '2023-05-05',
-        views: 654,
-        comments: 48,
-        likes: 112,
-        category: '文化遗产'
-      }
-    ])
+    // 论坛帖子数据 - 初始为空数组，后续从API获取
+    const forumPosts = ref([])
     
     // 文化活动数据
     const activities = ref([
@@ -354,7 +252,7 @@ export default {
         id: '1',
         title: '湖湘文化艺术节',
         description: '一场集音乐、舞蹈、戏剧、美术于一体的综合性文化艺术盛宴，展示湖湘文化的独特魅力。',
-        imageUrl: '/src/assets/Imgs/湖湘文化.png',
+        imageUrl: 'https://picsum.photos/seed/huxiangart/400/300',
         startDate: '2023-07-15',
         endDate: '2023-07-20',
         location: '长沙市湖南大剧院',
@@ -365,7 +263,7 @@ export default {
         id: '2',
         title: '岳麓书院文化讲座系列',
         description: '邀请知名学者解读湖湘文化经典，探讨传统文化在当代的价值和意义。',
-        imageUrl: '/src/assets/Imgs/岳麓书院1.jpg',
+        imageUrl: 'https://img2.baidu.com/it/u=3735106663,128794723&fm=253&app=138&f=JPEG?w=800&h=1067',
         startDate: '2023-07-08',
         endDate: '2023-07-08',
         location: '岳麓书院明伦堂',
@@ -376,7 +274,7 @@ export default {
         id: '3',
         title: '湘绣技艺体验工作坊',
         description: '由资深湘绣艺人亲自指导，让参与者亲身体验湘绣的制作过程，感受传统工艺的魅力。',
-        imageUrl: '/src/assets/Imgs/湘绣1.jpg',
+        imageUrl: 'https://picsum.photos/seed/huxiangembroidery/400/300',
         startDate: '2023-07-22',
         endDate: '2023-07-22',
         location: '湖南省博物馆',
@@ -418,16 +316,47 @@ export default {
       }
     ])
     
+    // 从API获取帖子列表
+    const fetchForumPosts = async () => {
+      try {
+        loading.value = true
+        // 添加分页参数：每页3条记录
+        const params = new URLSearchParams({
+          page: currentPage.value,
+          limit: 3,
+          sortBy: forumSortBy.value
+        });
+        const response = await request(`/community/posts?${params.toString()}`, 'GET')
+        
+        if (response.success) {
+          forumPosts.value = response.data
+          // 根据后端返回的分页信息更新总页数
+          forumPages.value = response.pagination?.pages || 1
+        } else {
+          throw new Error(response.message || '获取帖子列表失败')
+        }
+      } catch (err) {
+        console.error('获取帖子列表错误:', err)
+        if (props.showAlert) {
+          props.showAlert(err.message || '获取帖子列表失败', 'error')
+        }
+      } finally {
+        loading.value = false
+      }
+    }
+    
     // 方法：切换标签页
     const switchTab = (tab) => {
       activeTab.value = tab
+      // 当切换到论坛标签时，刷新帖子列表
+      if (tab === 'forum') {
+        fetchForumPosts()
+      }
     }
     
     // 方法：创建新帖子
     const createNewPost = () => {
-      if (props.showAlert) {
-        props.showAlert('发帖功能即将开放，敬请期待！', 'info')
-      }
+      router.push('/create-post')
     }
     
     // 方法：查看帖子详情
@@ -437,28 +366,22 @@ export default {
     
     // 方法：论坛帖子排序
     const sortForumPosts = () => {
-      // 根据选择的排序方式对帖子进行排序
-      if (forumSortBy.value === 'latest') {
-        forumPosts.value.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      } else if (forumSortBy.value === 'popular') {
-        forumPosts.value.sort((a, b) => b.views - a.views)
-      } else if (forumSortBy.value === 'comments') {
-        forumPosts.value.sort((a, b) => b.comments - a.comments)
-      }
+      // 调用获取帖子列表函数，这会使用当前的排序方式
+      fetchForumPosts()
     }
     
     // 计算属性：当前页显示的帖子
     const currentPagePosts = computed(() => {
-      const pageSize = 3
-      const startIndex = (currentPage.value - 1) * pageSize
-      const endIndex = startIndex + pageSize
-      return forumPosts.value.slice(startIndex, endIndex)
+      // 直接返回从后端获取的当前页数据，不需要前端再进行切片
+      return forumPosts.value;
     })
     
     // 方法：分页导航
     const goToPage = (page) => {
       if (page >= 1 && page <= forumPages.value) {
         currentPage.value = page
+        // 切换页面时重新获取数据
+        fetchForumPosts()
       }
     }
     
@@ -534,6 +457,31 @@ export default {
       const day = date.getDate()
       return `${month}月${day}日`
     }
+
+    // 分类映射函数 - 只保留四种主要分类
+    const getCategoryLabel = (category) => {
+      const categoryMap = {
+        '文化讨论': '文化讨论',
+        '历史研究': '历史研究',
+        '传统艺术': '传统艺术',
+        '饮食文化': '饮食文化',
+        'discussion': '文化讨论',
+        'question': '文化讨论',
+        'sharing': '文化讨论',
+        'activity': '文化讨论',
+        'resource': '文化讨论',
+        'history': '历史研究',
+        'art': '传统艺术',
+        'custom': '文化讨论',
+        'default': '文化讨论'
+      };
+      return categoryMap[category] || '文化讨论';
+    }
+
+    // 组件挂载时获取帖子列表
+    onMounted(() => {
+      fetchForumPosts()
+    })
     
     return {
       activeTab,
@@ -542,6 +490,7 @@ export default {
       forumPages,
       forumPosts,
       currentPagePosts,
+      loading,
       activities,
       contribution,
       feedback,
@@ -556,7 +505,9 @@ export default {
       handleImageUpload,
       submitFeedback,
       formatDate,
-      formatActivityDate
+      formatActivityDate,
+      fetchForumPosts,
+      getCategoryLabel
     }
   }
 }
@@ -783,6 +734,13 @@ export default {
 .pagination-btn:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.2rem;
+  color: #666;
 }
 
 /* 活动样式 */

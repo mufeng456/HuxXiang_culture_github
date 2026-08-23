@@ -86,7 +86,7 @@ def login():
         ).first()
         
         if user and user.check_password(password) and user.is_active:
-            access_token = create_access_token(identity=user.id)
+            access_token = create_access_token(identity=str(user.id))
             return jsonify({
                 'success': True,
                 'message': '登录成功',
@@ -110,7 +110,7 @@ def login():
 def profile():
     """获取用户个人信息"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = current_app.db.session.get(User, user_id)
         
         if not user:
@@ -137,7 +137,7 @@ def profile():
 def update_profile():
     """更新用户个人信息"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = current_app.db.session.get(User, user_id)
         
         if not user:
@@ -175,7 +175,7 @@ def update_profile():
 def upload_avatar():
     """上传用户头像"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = current_app.db.session.get(User, user_id)
         
         if not user:

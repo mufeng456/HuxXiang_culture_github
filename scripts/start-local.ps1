@@ -1,4 +1,4 @@
-param(
+﻿param(
   [switch]$OpenBrowser
 )
 
@@ -189,7 +189,7 @@ $null = Get-ToolPath -Name "npm.cmd"
 $mysqlExe = if ($env:MYSQL_EXE) { $env:MYSQL_EXE } else { Get-ToolPath -Name "mysql.exe" -Fallbacks @($mysqlFallback) }
 
 $databaseUser = if ($env:HX_MYSQL_USER) { $env:HX_MYSQL_USER } else { "root" }
-$databasePassword = if ($env:HX_MYSQL_PASSWORD) { $env:HX_MYSQL_PASSWORD } else { "hutbhutb0000" }
+$databasePassword = if ($env:HX_MYSQL_PASSWORD) { $env:HX_MYSQL_PASSWORD } else { "password" }
 $databaseHost = if ($env:HX_MYSQL_HOST) { $env:HX_MYSQL_HOST } else { "127.0.0.1" }
 $databasePort = if ($env:HX_MYSQL_PORT) { $env:HX_MYSQL_PORT } else { "3306" }
 $databaseName = if ($env:HX_MYSQL_DATABASE) { $env:HX_MYSQL_DATABASE } else { "huxiang_culture" }

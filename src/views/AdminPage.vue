@@ -122,7 +122,7 @@
         <div v-if="activeTab === 'knowledge-graph'" class="tab-content">
           <div class="content-header">
             <h2>知识图谱管理</h2>
-            <button class="btn btn-primary" @click="showAddNodeModal = true">
+            <button class="btn btn-primary" @click="openAddNodeModal">
               <i class="fas fa-plus"></i> 添加节点
             </button>
           </div>
@@ -132,8 +132,9 @@
                 <tr>
                   <th>ID</th>
                   <th>节点名称</th>
+                  <th>分类</th>
                   <th>类型</th>
-                  <th>相关资源</th>
+                  <th>描述</th>
                   <th>操作</th>
                 </tr>
               </thead>
@@ -141,8 +142,13 @@
                 <tr v-for="node in graphNodes" :key="node.id">
                   <td>{{ node.id }}</td>
                   <td>{{ node.name }}</td>
-                  <td>{{ node.type }}</td>
-                  <td>{{ node.relatedResources || 0 }}</td>
+                  <td>
+                    <span class="status-badge" :style="{ backgroundColor: node.color, color: 'white' }">
+                      {{ node.category }}
+                    </span>
+                  </td>
+                  <td>{{ nodeTypeLabel(node.node_type) }}</td>
+                  <td class="node-desc">{{ node.description || '-' }}</td>
                   <td>
                     <button class="btn btn-sm btn-info" @click="editNode(node)">
                       <i class="fas fa-edit"></i>
@@ -154,6 +160,48 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- 添加/编辑节点弹窗 -->
+        <div v-if="showAddNodeModal" class="modal-overlay" @click.self="showAddNodeModal = false">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>{{ nodeForm.id ? '编辑节点' : '添加节点' }}</h3>
+              <button class="modal-close" @click="showAddNodeModal = false">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div v-if="nodeFormError" class="error-message">{{ nodeFormError }}</div>
+              <div class="form-group">
+                <label>节点名称 <span class="required">*</span></label>
+                <input type="text" v-model="nodeForm.name" placeholder="如：柳宗元" maxlength="50" />
+              </div>
+              <div class="form-group">
+                <label>分类</label>
+                <select v-model="nodeForm.category" @change="onCategoryChange">
+                  <option v-for="cat in kgCategories" :key="cat.name" :value="cat.name">{{ cat.name }}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>节点类型</label>
+                <select v-model="nodeForm.node_type">
+                  <option value="person">person（人物）</option>
+                  <option value="place">place（地点）</option>
+                  <option value="concept">concept（概念）</option>
+                  <option value="culture">culture（文化）</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>描述</label>
+                <textarea v-model="nodeForm.description" rows="3" placeholder="节点简介（选填）"></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-outline" @click="showAddNodeModal = false">取消</button>
+              <button class="btn btn-primary" @click="saveNode" :disabled="nodeSaving">
+                {{ nodeSaving ? '保存中...' : '保存' }}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -269,6 +317,7 @@
 <script>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { request } from '../services/api'
 
 // 模拟数据服务
 const mockAdminService = {
@@ -343,6 +392,18 @@ export default {
     const showAddResourceModal = ref(false)
     const showAddNodeModal = ref(false)
     const showAddUserModal = ref(false)
+
+    // 知识图谱管理
+    const kgCategories = ref([
+      { name: '历史人物', color: '#2ecc71', nodeType: 'person' },
+      { name: '历史遗迹', color: '#e74c3c', nodeType: 'place' },
+      { name: '文化遗产', color: '#9b59b6', nodeType: 'culture' },
+      { name: '文学艺术', color: '#f39c12', nodeType: 'culture' },
+      { name: '哲学思想', color: '#3498db', nodeType: 'concept' },
+    ])
+    const nodeForm = ref({ id: null, name: '', description: '', category: '历史人物', node_type: 'person', color: '#2ecc71' })
+    const nodeFormError = ref('')
+    const nodeSaving = ref(false)
     
     // 计算过滤后的帖子
     const filteredPosts = computed(() => {
@@ -362,6 +423,12 @@ export default {
         minute: '2-digit'
       })
     }
+
+    // 节点类型中英文映射
+    const nodeTypeLabel = (type) => {
+      const map = { person: '人物', place: '地点', concept: '概念', culture: '文化', category: '分类' }
+      return map[type] || type || '-'
+    }
     
     // 加载数据
     const loadData = async () => {
@@ -376,8 +443,12 @@ export default {
         // 获取资源列表
         resources.value = await mockAdminService.getResources()
         
-        // 获取知识图谱节点
-        graphNodes.value = await mockAdminService.getGraphNodes()
+        // 获取知识图谱节点（真实API，排除顶层系统节点）
+        const kgRes = await request('/knowledge/nodes', 'GET')
+        if (kgRes.success) {
+          graphNodes.value = kgRes.data.filter(n => n.level !== 1)
+          graphNodeCount.value = graphNodes.value.length
+        }
         
         // 获取社区帖子
         posts.value = await mockAdminService.getPosts()
@@ -411,16 +482,76 @@ export default {
     }
     
     // 知识图谱节点操作
-    const editNode = (node) => {
-      alert(`编辑节点: ${node.name}`)
-      // 实际项目中应该打开编辑模态框
+    const openAddNodeModal = () => {
+      nodeForm.value = { id: null, name: '', description: '', category: '历史人物', node_type: 'person', color: '#2ecc71' }
+      nodeFormError.value = ''
+      showAddNodeModal.value = true
     }
-    
-    const deleteNode = (id) => {
-      if (confirm('确定要删除这个节点吗？')) {
+
+    const editNode = (node) => {
+      nodeForm.value = {
+        id: node.id,
+        name: node.name,
+        description: node.description || '',
+        category: node.category,
+        node_type: node.node_type,
+        color: node.color || '#95a5a6'
+      }
+      nodeFormError.value = ''
+      showAddNodeModal.value = true
+    }
+
+    const onCategoryChange = () => {
+      const cat = kgCategories.value.find(c => c.name === nodeForm.value.category)
+      if (cat) {
+        nodeForm.value.node_type = cat.nodeType
+        nodeForm.value.color = cat.color
+      }
+    }
+
+    const saveNode = async () => {
+      if (!nodeForm.value.name.trim()) {
+        nodeFormError.value = '节点名称不能为空'
+        return
+      }
+      nodeSaving.value = true
+      nodeFormError.value = ''
+      try {
+        const payload = {
+          name: nodeForm.value.name.trim(),
+          description: nodeForm.value.description,
+          category: nodeForm.value.category,
+          node_type: nodeForm.value.node_type,
+          color: nodeForm.value.color,
+          level: 2
+        }
+        if (nodeForm.value.id) {
+          await request(`/knowledge/nodes/${nodeForm.value.id}`, 'PUT', payload)
+        } else {
+          await request('/knowledge/nodes', 'POST', payload)
+        }
+        showAddNodeModal.value = false
+        // 重新加载节点列表
+        const kgRes = await request('/knowledge/nodes', 'GET')
+        if (kgRes.success) {
+          graphNodes.value = kgRes.data.filter(n => n.level !== 1)
+          graphNodeCount.value = graphNodes.value.length
+        }
+      } catch (err) {
+        nodeFormError.value = err.message || '保存失败'
+      } finally {
+        nodeSaving.value = false
+      }
+    }
+
+    const deleteNode = async (id) => {
+      if (!confirm('确定要删除这个节点吗？关联的连线也会一并删除。')) return
+      try {
+        await request(`/knowledge/nodes/${id}`, 'DELETE')
         graphNodes.value = graphNodes.value.filter(n => n.id !== id)
-        graphNodeCount.value--
-        alert('节点已删除')
+        graphNodeCount.value = graphNodes.value.length
+      } catch (err) {
+        alert('删除失败: ' + (err.message || '未知错误'))
       }
     }
     
@@ -487,6 +618,14 @@ export default {
       showAddResourceModal,
       showAddNodeModal,
       showAddUserModal,
+      kgCategories,
+      nodeForm,
+      nodeFormError,
+      nodeSaving,
+      openAddNodeModal,
+      onCategoryChange,
+      saveNode,
+      nodeTypeLabel,
       filteredPosts,
       formatDate,
       editResource,
@@ -822,5 +961,122 @@ export default {
     display: block;
     overflow-x: auto;
   }
+}
+
+/* 节点描述列截断 */
+.node-desc {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--light-text);
+  font-size: 0.85rem;
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--text-color);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--light-text);
+  padding: 0;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: var(--text-color);
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-body .form-group {
+  margin-bottom: 1rem;
+}
+
+.modal-body label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+
+.modal-body .required {
+  color: var(--danger-color);
+}
+
+.modal-body input,
+.modal-body select,
+.modal-body textarea {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.modal-body input:focus,
+.modal-body select:focus,
+.modal-body textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.modal-body .error-message {
+  background: #fef2f2;
+  color: var(--danger-color);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color);
 }
 </style>

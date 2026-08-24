@@ -84,12 +84,24 @@
   stroke-width: 2px;
 }
 
+/* 节点组（圆圈+文字）悬停效果 */
+.graph-node-group {
+  transition: transform 0.25s ease;
+}
+
+/* 拖拽中禁用所有过渡动画，确保实时跟随 */
+.node-dragging .graph-node,
+.node-dragging .graph-node-group,
+.node-dragging .graph-link,
+.node-dragging .graph-node-text {
+  transition: none !important;
+}
+
 /* 节点悬停效果 */
 .graph-node:hover {
   filter: brightness(1.2);
-  transform: scale(1.1);
   stroke: #333;
-  stroke-width: 2.5px;
+  stroke-width: 3px;
 }
 
 /* 节点文本样式 */
@@ -97,7 +109,6 @@
   font-family: "Microsoft YaHei", "SimHei", sans-serif;
   font-size: 14px;
   text-anchor: middle;
-  dominant-baseline: middle;
   fill: white;
   font-weight: 700;
   pointer-events: none;
@@ -148,11 +159,6 @@
 /* 节点悬停效果 */
 .graph-node:hover {
   filter: brightness(1.2);
-  transform: scale(1.1);
-}
-
-.graph-node:hover+.graph-node-text {
-  font-weight: bold;
 }
 
 /* 连接线悬停效果 */

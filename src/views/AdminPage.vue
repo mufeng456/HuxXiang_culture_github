@@ -205,6 +205,51 @@
           </div>
         </div>
 
+        <!-- 添加/编辑用户弹窗 -->
+        <div v-if="showAddUserModal" class="modal-overlay" @click.self="showAddUserModal = false">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>{{ userForm.id ? '编辑用户' : '添加用户' }}</h3>
+              <button class="modal-close" @click="showAddUserModal = false">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div v-if="userFormError" class="error-message">{{ userFormError }}</div>
+              <div class="form-group">
+                <label>用户名 <span class="required">*</span></label>
+                <input type="text" v-model="userForm.username" placeholder="至少3个字符" maxlength="80" />
+              </div>
+              <div class="form-group">
+                <label>邮箱 <span class="required">*</span></label>
+                <input type="email" v-model="userForm.email" placeholder="user@example.com" maxlength="120" />
+              </div>
+              <div class="form-group">
+                <label>密码 {{ userForm.id ? '（留空则不修改）' : '*' }}</label>
+                <input type="password" v-model="userForm.password" placeholder="至少6个字符" />
+              </div>
+              <div class="form-group">
+                <label>角色</label>
+                <select v-model="userForm.role">
+                  <option value="user">普通用户</option>
+                  <option value="admin">管理员</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>账号状态</label>
+                <select v-model="userForm.is_active">
+                  <option :value="true">正常</option>
+                  <option :value="false">禁用</option>
+                </select>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-outline" @click="showAddUserModal = false">取消</button>
+              <button class="btn btn-primary" @click="saveUser" :disabled="userSaving">
+                {{ userSaving ? '保存中...' : '保存' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- 互动社区管理 -->
         <div v-if="activeTab === 'community'" class="tab-content">
           <div class="content-header">
@@ -265,7 +310,7 @@
         <div v-if="activeTab === 'users'" class="tab-content">
           <div class="content-header">
             <h2>用户管理</h2>
-            <button class="btn btn-primary" @click="showAddUserModal = true">
+            <button class="btn btn-primary" @click="userForm = { id: null, username: '', email: '', password: '', role: 'user', is_active: true }; userFormError = ''; showAddUserModal = true">
               <i class="fas fa-plus"></i> 添加用户
             </button>
           </div>
@@ -278,18 +323,24 @@
                   <th>邮箱</th>
                   <th>注册时间</th>
                   <th>角色</th>
+                  <th>状态</th>
                   <th>操作</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="user in users" :key="user.id" :class="{ 'admin-row': user.isAdmin }">
+                <tr v-for="user in users" :key="user.id" :class="{ 'admin-row': user.role === 'admin' }">
                   <td>{{ user.id }}</td>
                   <td>{{ user.username }}</td>
                   <td>{{ user.email }}</td>
-                  <td>{{ formatDate(user.registeredAt) }}</td>
+                  <td>{{ formatDate(user.created_at) }}</td>
                   <td>
-                    <span :class="['status-badge', user.isAdmin ? 'admin' : 'user']">
-                      {{ user.isAdmin ? '管理员' : '普通用户' }}
+                    <span :class="['status-badge', user.role === 'admin' ? 'admin' : 'user']">
+                      {{ user.role === 'admin' ? '管理员' : '普通用户' }}
+                    </span>
+                  </td>
+                  <td>
+                    <span :class="['status-badge', user.is_active ? 'active' : 'inactive']">
+                      {{ user.is_active ? '正常' : '禁用' }}
                     </span>
                   </td>
                   <td>
@@ -298,8 +349,8 @@
                     </button>
                     <button 
                       class="btn btn-sm btn-danger" 
-                      @click="deleteUser(user.id)"
-                      :disabled="user.isAdmin && user.username === currentUser.username"
+                      @click="deleteUser(user)"
+                      :disabled="user.role === 'admin' && user.username === currentUser.username"
                     >
                       <i class="fas fa-trash"></i>
                     </button>
@@ -393,6 +444,11 @@ export default {
     const showAddNodeModal = ref(false)
     const showAddUserModal = ref(false)
 
+    // 用户管理表单
+    const userForm = ref({ id: null, username: '', email: '', password: '', role: 'user', is_active: true })
+    const userFormError = ref('')
+    const userSaving = ref(false)
+
     // 知识图谱管理
     const kgCategories = ref([
       { name: '历史人物', color: '#2ecc71', nodeType: 'person' },
@@ -453,8 +509,8 @@ export default {
         // 获取社区帖子
         posts.value = await mockAdminService.getPosts()
         
-        // 获取用户列表
-        users.value = await mockAdminService.getUsers()
+        // 获取用户列表（真实API）
+        await loadUsers()
         
         // 获取当前用户信息
         const storedUser = localStorage.getItem('user')
@@ -578,22 +634,82 @@ export default {
     }
     
     // 用户操作
-    const editUser = (user) => {
-      alert(`编辑用户: ${user.username}`)
-      // 实际项目中应该打开编辑模态框
+    const loadUsers = async () => {
+      try {
+        const res = await request('/admin/users/?page=1&per_page=50', 'GET')
+        users.value = res.users || []
+        userCount.value = res.total || 0
+      } catch (error) {
+        console.error('加载用户列表失败:', error)
+      }
     }
-    
-    const deleteUser = (id) => {
-      const userToDelete = users.value.find(u => u.id === id)
-      if (userToDelete && userToDelete.isAdmin && userToDelete.username === currentUser.value?.username) {
+
+    const editUser = (user) => {
+      userForm.value = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        password: '',
+        role: user.role,
+        is_active: user.is_active,
+      }
+      userFormError.value = ''
+      showAddUserModal.value = true
+    }
+
+    const saveUser = async () => {
+      userFormError.value = ''
+      if (!userForm.value.username || userForm.value.username.length < 3) {
+        userFormError.value = '用户名至少3个字符'
+        return
+      }
+      if (!userForm.value.email || !userForm.value.email.includes('@')) {
+        userFormError.value = '邮箱格式不正确'
+        return
+      }
+      if (!userForm.value.id && (!userForm.value.password || userForm.value.password.length < 6)) {
+        userFormError.value = '密码至少6个字符'
+        return
+      }
+
+      userSaving.value = true
+      try {
+        const payload = {
+          username: userForm.value.username,
+          email: userForm.value.email,
+          role: userForm.value.role,
+          is_active: userForm.value.is_active,
+        }
+        if (userForm.value.password) {
+          payload.password = userForm.value.password
+        }
+
+        if (userForm.value.id) {
+          await request(`/admin/users/${userForm.value.id}`, 'PUT', payload)
+        } else {
+          await request('/admin/users/', 'POST', payload)
+        }
+        showAddUserModal.value = false
+        await loadUsers()
+      } catch (error) {
+        userFormError.value = error.response?.data?.message || '保存失败'
+      } finally {
+        userSaving.value = false
+      }
+    }
+
+    const deleteUser = async (user) => {
+      if (user.role === 'admin' && user.username === currentUser.value?.username) {
         alert('无法删除当前登录的管理员账号')
         return
       }
-      
-      if (confirm(`确定要删除用户 ${userToDelete?.username || ''} 吗？`)) {
-        users.value = users.value.filter(u => u.id !== id)
-        userCount.value--
-        alert('用户已删除')
+      if (!confirm(`确定要删除用户 ${user.username} 吗？`)) return
+
+      try {
+        await request(`/admin/users/${user.id}`, 'DELETE')
+        await loadUsers()
+      } catch (error) {
+        alert('删除失败: ' + (error.response?.data?.message || error.message))
       }
     }
     
@@ -618,6 +734,9 @@ export default {
       showAddResourceModal,
       showAddNodeModal,
       showAddUserModal,
+      userForm,
+      userFormError,
+      userSaving,
       kgCategories,
       nodeForm,
       nodeFormError,
@@ -636,7 +755,9 @@ export default {
       approvePost,
       deletePost,
       editUser,
-      deleteUser
+      deleteUser,
+      saveUser,
+      loadUsers
     }
   }
 }
@@ -863,6 +984,16 @@ export default {
   color: var(--info-color);
 }
 
+.status-badge.active {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+}
+
+.status-badge.inactive {
+  background-color: rgba(107, 114, 128, 0.1);
+  color: var(--light-text);
+}
+
 /* 按钮样式 */
 .btn {
   padding: 0.5rem 1rem;
@@ -931,6 +1062,29 @@ export default {
 .btn-danger:disabled {
   background-color: var(--light-text);
   cursor: not-allowed;
+}
+
+/* 表格操作栏按钮：确保颜色可见 */
+.admin-table .btn-sm.btn-info {
+  background-color: #3B82F6 !important;
+  color: #fff !important;
+  padding: 0.3rem 0.5rem;
+  margin-right: 0.4rem;
+}
+.admin-table .btn-sm.btn-info:hover {
+  background-color: #2563EB !important;
+}
+.admin-table .btn-sm.btn-danger {
+  background-color: #EF4444 !important;
+  color: #fff !important;
+  padding: 0.3rem 0.5rem;
+}
+.admin-table .btn-sm.btn-danger:hover {
+  background-color: #DC2626 !important;
+}
+.admin-table .btn-sm.btn-danger:disabled {
+  background-color: #9CA3AF !important;
+  color: #fff !important;
 }
 
 .btn-warning {

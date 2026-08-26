@@ -69,6 +69,13 @@
         >
           <i class="fas fa-users"></i> 用户管理
         </button>
+        <button 
+          class="tab-button" 
+          :class="{ active: activeTab === 'ai-config' }"
+          @click="activeTab = 'ai-config'"
+        >
+          <i class="fas fa-robot"></i> AI配置
+        </button>
       </div>
 
       <!-- 管理内容区域 -->
@@ -122,7 +129,7 @@
         <div v-if="activeTab === 'knowledge-graph'" class="tab-content">
           <div class="content-header">
             <h2>知识图谱管理</h2>
-            <button class="btn btn-primary" @click="showAddNodeModal = true">
+            <button class="btn btn-primary" @click="openAddNodeModal">
               <i class="fas fa-plus"></i> 添加节点
             </button>
           </div>
@@ -132,8 +139,9 @@
                 <tr>
                   <th>ID</th>
                   <th>节点名称</th>
+                  <th>分类</th>
                   <th>类型</th>
-                  <th>相关资源</th>
+                  <th>描述</th>
                   <th>操作</th>
                 </tr>
               </thead>
@@ -141,8 +149,13 @@
                 <tr v-for="node in graphNodes" :key="node.id">
                   <td>{{ node.id }}</td>
                   <td>{{ node.name }}</td>
-                  <td>{{ node.type }}</td>
-                  <td>{{ node.relatedResources || 0 }}</td>
+                  <td>
+                    <span class="status-badge" :style="{ backgroundColor: node.color, color: 'white' }">
+                      {{ node.category }}
+                    </span>
+                  </td>
+                  <td>{{ nodeTypeLabel(node.node_type) }}</td>
+                  <td class="node-desc">{{ node.description || '-' }}</td>
                   <td>
                     <button class="btn btn-sm btn-info" @click="editNode(node)">
                       <i class="fas fa-edit"></i>
@@ -154,6 +167,93 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- 添加/编辑节点弹窗 -->
+        <div v-if="showAddNodeModal" class="modal-overlay" @click.self="showAddNodeModal = false">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>{{ nodeForm.id ? '编辑节点' : '添加节点' }}</h3>
+              <button class="modal-close" @click="showAddNodeModal = false">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div v-if="nodeFormError" class="error-message">{{ nodeFormError }}</div>
+              <div class="form-group">
+                <label>节点名称 <span class="required">*</span></label>
+                <input type="text" v-model="nodeForm.name" placeholder="如：柳宗元" maxlength="50" />
+              </div>
+              <div class="form-group">
+                <label>分类</label>
+                <select v-model="nodeForm.category" @change="onCategoryChange">
+                  <option v-for="cat in kgCategories" :key="cat.name" :value="cat.name">{{ cat.name }}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>节点类型</label>
+                <select v-model="nodeForm.node_type">
+                  <option value="person">person（人物）</option>
+                  <option value="place">place（地点）</option>
+                  <option value="concept">concept（概念）</option>
+                  <option value="culture">culture（文化）</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>描述</label>
+                <textarea v-model="nodeForm.description" rows="3" placeholder="节点简介（选填）"></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-outline" @click="showAddNodeModal = false">取消</button>
+              <button class="btn btn-primary" @click="saveNode" :disabled="nodeSaving">
+                {{ nodeSaving ? '保存中...' : '保存' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 添加/编辑用户弹窗 -->
+        <div v-if="showAddUserModal" class="modal-overlay" @click.self="showAddUserModal = false">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>{{ userForm.id ? '编辑用户' : '添加用户' }}</h3>
+              <button class="modal-close" @click="showAddUserModal = false">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div v-if="userFormError" class="error-message">{{ userFormError }}</div>
+              <div class="form-group">
+                <label>用户名 <span class="required">*</span></label>
+                <input type="text" v-model="userForm.username" placeholder="至少3个字符" maxlength="80" />
+              </div>
+              <div class="form-group">
+                <label>邮箱 <span class="required">*</span></label>
+                <input type="email" v-model="userForm.email" placeholder="user@example.com" maxlength="120" />
+              </div>
+              <div class="form-group">
+                <label>密码 {{ userForm.id ? '（留空则不修改）' : '*' }}</label>
+                <input type="password" v-model="userForm.password" placeholder="至少6个字符" />
+              </div>
+              <div class="form-group">
+                <label>角色</label>
+                <select v-model="userForm.role">
+                  <option value="user">普通用户</option>
+                  <option value="admin">管理员</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>账号状态</label>
+                <select v-model="userForm.is_active">
+                  <option :value="true">正常</option>
+                  <option :value="false">禁用</option>
+                </select>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-outline" @click="showAddUserModal = false">取消</button>
+              <button class="btn btn-primary" @click="saveUser" :disabled="userSaving">
+                {{ userSaving ? '保存中...' : '保存' }}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -217,7 +317,7 @@
         <div v-if="activeTab === 'users'" class="tab-content">
           <div class="content-header">
             <h2>用户管理</h2>
-            <button class="btn btn-primary" @click="showAddUserModal = true">
+            <button class="btn btn-primary" @click="userForm = { id: null, username: '', email: '', password: '', role: 'user', is_active: true }; userFormError = ''; showAddUserModal = true">
               <i class="fas fa-plus"></i> 添加用户
             </button>
           </div>
@@ -230,18 +330,24 @@
                   <th>邮箱</th>
                   <th>注册时间</th>
                   <th>角色</th>
+                  <th>状态</th>
                   <th>操作</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="user in users" :key="user.id" :class="{ 'admin-row': user.isAdmin }">
+                <tr v-for="user in users" :key="user.id" :class="{ 'admin-row': user.role === 'admin' }">
                   <td>{{ user.id }}</td>
                   <td>{{ user.username }}</td>
                   <td>{{ user.email }}</td>
-                  <td>{{ formatDate(user.registeredAt) }}</td>
+                  <td>{{ formatDate(user.created_at) }}</td>
                   <td>
-                    <span :class="['status-badge', user.isAdmin ? 'admin' : 'user']">
-                      {{ user.isAdmin ? '管理员' : '普通用户' }}
+                    <span :class="['status-badge', user.role === 'admin' ? 'admin' : 'user']">
+                      {{ user.role === 'admin' ? '管理员' : '普通用户' }}
+                    </span>
+                  </td>
+                  <td>
+                    <span :class="['status-badge', user.is_active ? 'active' : 'inactive']">
+                      {{ user.is_active ? '正常' : '禁用' }}
                     </span>
                   </td>
                   <td>
@@ -250,8 +356,8 @@
                     </button>
                     <button 
                       class="btn btn-sm btn-danger" 
-                      @click="deleteUser(user.id)"
-                      :disabled="user.isAdmin && user.username === currentUser.username"
+                      @click="deleteUser(user)"
+                      :disabled="user.role === 'admin' && user.username === currentUser.username"
                     >
                       <i class="fas fa-trash"></i>
                     </button>
@@ -259,6 +365,45 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- AI配置管理 -->
+        <div v-if="activeTab === 'ai-config'" class="tab-content">
+          <div class="content-header">
+            <h2>AI 服务商配置</h2>
+            <span class="ai-config-hint">兼容 OpenAI 格式的服务商（OpenAI / 豆包 / 通义千问等）</span>
+          </div>
+          <div class="ai-config-form">
+            <div v-if="aiConfigMessage" :class="['config-message', aiConfigMessageType]">{{ aiConfigMessage }}</div>
+            <div class="form-group">
+              <label>服务商名称</label>
+              <input type="text" v-model="aiConfig.provider_name" placeholder="如：OpenAI / 豆包 / 通义千问" />
+            </div>
+            <div class="form-group">
+              <label>API Base URL</label>
+              <input type="text" v-model="aiConfig.api_base_url" placeholder="https://api.openai.com/v1" />
+            </div>
+            <div class="form-group">
+              <label>API Key</label>
+              <input type="password" v-model="aiConfig.api_key" placeholder="输入 API Key（留空则不修改）" />
+              <span v-if="aiConfigSavedKey" class="key-hint">当前已配置：****{{ aiConfigSavedKey }}</span>
+            </div>
+            <div class="form-group">
+              <label>模型名称</label>
+              <input type="text" v-model="aiConfig.model" placeholder="如：gpt-3.5-turbo / doubao-pro / qwen-turbo" />
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" @click="saveAiConfig" :disabled="aiConfigSaving">
+                <i class="fas fa-save"></i> {{ aiConfigSaving ? '保存中...' : '保存配置' }}
+              </button>
+              <button class="btn btn-outline" @click="testAiConnection" :disabled="aiConfigTesting">
+                <i class="fas fa-plug"></i> {{ aiConfigTesting ? '测试中...' : '测试连接' }}
+              </button>
+              <button class="btn btn-danger" @click="clearAiConfig">
+                <i class="fas fa-trash"></i> 清除配置
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -269,6 +414,7 @@
 <script>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { request } from '../services/api'
 
 // 模拟数据服务
 const mockAdminService = {
@@ -343,6 +489,31 @@ export default {
     const showAddResourceModal = ref(false)
     const showAddNodeModal = ref(false)
     const showAddUserModal = ref(false)
+
+    // 用户管理表单
+    const userForm = ref({ id: null, username: '', email: '', password: '', role: 'user', is_active: true })
+    const userFormError = ref('')
+    const userSaving = ref(false)
+
+    // 知识图谱管理
+    const kgCategories = ref([
+      { name: '历史人物', color: '#2ecc71', nodeType: 'person' },
+      { name: '历史遗迹', color: '#e74c3c', nodeType: 'place' },
+      { name: '文化遗产', color: '#9b59b6', nodeType: 'culture' },
+      { name: '文学艺术', color: '#f39c12', nodeType: 'culture' },
+      { name: '哲学思想', color: '#3498db', nodeType: 'concept' },
+    ])
+    const nodeForm = ref({ id: null, name: '', description: '', category: '历史人物', node_type: 'person', color: '#2ecc71' })
+    const nodeFormError = ref('')
+    const nodeSaving = ref(false)
+
+    // AI 配置
+    const aiConfig = ref({ provider_name: 'OpenAI', api_base_url: 'https://api.openai.com/v1', api_key: '', model: 'gpt-3.5-turbo' })
+    const aiConfigSavedKey = ref('')
+    const aiConfigSaving = ref(false)
+    const aiConfigTesting = ref(false)
+    const aiConfigMessage = ref('')
+    const aiConfigMessageType = ref('')
     
     // 计算过滤后的帖子
     const filteredPosts = computed(() => {
@@ -362,6 +533,12 @@ export default {
         minute: '2-digit'
       })
     }
+
+    // 节点类型中英文映射
+    const nodeTypeLabel = (type) => {
+      const map = { person: '人物', place: '地点', concept: '概念', culture: '文化', category: '分类' }
+      return map[type] || type || '-'
+    }
     
     // 加载数据
     const loadData = async () => {
@@ -376,14 +553,18 @@ export default {
         // 获取资源列表
         resources.value = await mockAdminService.getResources()
         
-        // 获取知识图谱节点
-        graphNodes.value = await mockAdminService.getGraphNodes()
+        // 获取知识图谱节点（真实API，排除顶层系统节点）
+        const kgRes = await request('/knowledge/nodes', 'GET')
+        if (kgRes.success) {
+          graphNodes.value = kgRes.data.filter(n => n.level !== 1)
+          graphNodeCount.value = graphNodes.value.length
+        }
         
         // 获取社区帖子
         posts.value = await mockAdminService.getPosts()
         
-        // 获取用户列表
-        users.value = await mockAdminService.getUsers()
+        // 获取用户列表（真实API）
+        await loadUsers()
         
         // 获取当前用户信息
         const storedUser = localStorage.getItem('user')
@@ -391,8 +572,85 @@ export default {
           currentUser.value = JSON.parse(storedUser)
           user.value = currentUser.value
         }
+
+        // 加载 AI 配置
+        await loadAiConfig()
       } catch (error) {
         console.error('加载管理数据失败:', error)
+      }
+    }
+
+    // AI 配置操作
+    const loadAiConfig = async () => {
+      try {
+        const res = await request('/admin/ai-config/', 'GET')
+        if (res) {
+          aiConfig.value.provider_name = res.provider_name || 'OpenAI'
+          aiConfig.value.api_base_url = res.api_base_url || 'https://api.openai.com/v1'
+          aiConfig.value.model = res.model || 'gpt-3.5-turbo'
+          aiConfigSavedKey.value = res.api_key || ''
+          aiConfig.value.api_key = ''
+        }
+      } catch (e) {
+        console.error('加载AI配置失败', e)
+      }
+    }
+
+    const saveAiConfig = async () => {
+      aiConfigSaving.value = true
+      aiConfigMessage.value = ''
+      try {
+        const payload = {
+          provider_name: aiConfig.value.provider_name,
+          api_base_url: aiConfig.value.api_base_url,
+          model: aiConfig.value.model,
+        }
+        if (aiConfig.value.api_key) {
+          payload.api_key = aiConfig.value.api_key
+        }
+        const res = await request('/admin/ai-config/', 'PUT', payload)
+        aiConfigSavedKey.value = res.config?.api_key || ''
+        aiConfig.value.api_key = ''
+        aiConfigMessage.value = '配置保存成功！'
+        aiConfigMessageType.value = 'success'
+      } catch (e) {
+        aiConfigMessage.value = '保存失败：' + (e.response?.data?.error || e.message || '未知错误')
+        aiConfigMessageType.value = 'error'
+      } finally {
+        aiConfigSaving.value = false
+        setTimeout(() => { aiConfigMessage.value = '' }, 3000)
+      }
+    }
+
+    const testAiConnection = async () => {
+      aiConfigTesting.value = true
+      aiConfigMessage.value = ''
+      try {
+        const res = await request('/admin/ai-config/test', 'POST')
+        aiConfigMessage.value = '连接成功！AI回复：' + (res.reply || '')
+        aiConfigMessageType.value = 'success'
+      } catch (e) {
+        aiConfigMessage.value = '连接失败：' + (e.response?.data?.error || e.message || '未知错误')
+        aiConfigMessageType.value = 'error'
+      } finally {
+        aiConfigTesting.value = false
+        setTimeout(() => { aiConfigMessage.value = '' }, 5000)
+      }
+    }
+
+    const clearAiConfig = async () => {
+      if (!confirm('确定清除 AI 配置吗？清除后 AI 助手将无法使用。')) return
+      try {
+        await request('/admin/ai-config/', 'DELETE')
+        aiConfig.value = { provider_name: 'OpenAI', api_base_url: 'https://api.openai.com/v1', api_key: '', model: 'gpt-3.5-turbo' }
+        aiConfigSavedKey.value = ''
+        aiConfigMessage.value = '配置已清除'
+        aiConfigMessageType.value = 'success'
+      } catch (e) {
+        aiConfigMessage.value = '清除失败'
+        aiConfigMessageType.value = 'error'
+      } finally {
+        setTimeout(() => { aiConfigMessage.value = '' }, 3000)
       }
     }
     
@@ -411,16 +669,76 @@ export default {
     }
     
     // 知识图谱节点操作
-    const editNode = (node) => {
-      alert(`编辑节点: ${node.name}`)
-      // 实际项目中应该打开编辑模态框
+    const openAddNodeModal = () => {
+      nodeForm.value = { id: null, name: '', description: '', category: '历史人物', node_type: 'person', color: '#2ecc71' }
+      nodeFormError.value = ''
+      showAddNodeModal.value = true
     }
-    
-    const deleteNode = (id) => {
-      if (confirm('确定要删除这个节点吗？')) {
+
+    const editNode = (node) => {
+      nodeForm.value = {
+        id: node.id,
+        name: node.name,
+        description: node.description || '',
+        category: node.category,
+        node_type: node.node_type,
+        color: node.color || '#95a5a6'
+      }
+      nodeFormError.value = ''
+      showAddNodeModal.value = true
+    }
+
+    const onCategoryChange = () => {
+      const cat = kgCategories.value.find(c => c.name === nodeForm.value.category)
+      if (cat) {
+        nodeForm.value.node_type = cat.nodeType
+        nodeForm.value.color = cat.color
+      }
+    }
+
+    const saveNode = async () => {
+      if (!nodeForm.value.name.trim()) {
+        nodeFormError.value = '节点名称不能为空'
+        return
+      }
+      nodeSaving.value = true
+      nodeFormError.value = ''
+      try {
+        const payload = {
+          name: nodeForm.value.name.trim(),
+          description: nodeForm.value.description,
+          category: nodeForm.value.category,
+          node_type: nodeForm.value.node_type,
+          color: nodeForm.value.color,
+          level: 2
+        }
+        if (nodeForm.value.id) {
+          await request(`/knowledge/nodes/${nodeForm.value.id}`, 'PUT', payload)
+        } else {
+          await request('/knowledge/nodes', 'POST', payload)
+        }
+        showAddNodeModal.value = false
+        // 重新加载节点列表
+        const kgRes = await request('/knowledge/nodes', 'GET')
+        if (kgRes.success) {
+          graphNodes.value = kgRes.data.filter(n => n.level !== 1)
+          graphNodeCount.value = graphNodes.value.length
+        }
+      } catch (err) {
+        nodeFormError.value = err.message || '保存失败'
+      } finally {
+        nodeSaving.value = false
+      }
+    }
+
+    const deleteNode = async (id) => {
+      if (!confirm('确定要删除这个节点吗？关联的连线也会一并删除。')) return
+      try {
+        await request(`/knowledge/nodes/${id}`, 'DELETE')
         graphNodes.value = graphNodes.value.filter(n => n.id !== id)
-        graphNodeCount.value--
-        alert('节点已删除')
+        graphNodeCount.value = graphNodes.value.length
+      } catch (err) {
+        alert('删除失败: ' + (err.message || '未知错误'))
       }
     }
     
@@ -447,22 +765,82 @@ export default {
     }
     
     // 用户操作
-    const editUser = (user) => {
-      alert(`编辑用户: ${user.username}`)
-      // 实际项目中应该打开编辑模态框
+    const loadUsers = async () => {
+      try {
+        const res = await request('/admin/users/?page=1&per_page=50', 'GET')
+        users.value = res.users || []
+        userCount.value = res.total || 0
+      } catch (error) {
+        console.error('加载用户列表失败:', error)
+      }
     }
-    
-    const deleteUser = (id) => {
-      const userToDelete = users.value.find(u => u.id === id)
-      if (userToDelete && userToDelete.isAdmin && userToDelete.username === currentUser.value?.username) {
+
+    const editUser = (user) => {
+      userForm.value = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        password: '',
+        role: user.role,
+        is_active: user.is_active,
+      }
+      userFormError.value = ''
+      showAddUserModal.value = true
+    }
+
+    const saveUser = async () => {
+      userFormError.value = ''
+      if (!userForm.value.username || userForm.value.username.length < 3) {
+        userFormError.value = '用户名至少3个字符'
+        return
+      }
+      if (!userForm.value.email || !userForm.value.email.includes('@')) {
+        userFormError.value = '邮箱格式不正确'
+        return
+      }
+      if (!userForm.value.id && (!userForm.value.password || userForm.value.password.length < 6)) {
+        userFormError.value = '密码至少6个字符'
+        return
+      }
+
+      userSaving.value = true
+      try {
+        const payload = {
+          username: userForm.value.username,
+          email: userForm.value.email,
+          role: userForm.value.role,
+          is_active: userForm.value.is_active,
+        }
+        if (userForm.value.password) {
+          payload.password = userForm.value.password
+        }
+
+        if (userForm.value.id) {
+          await request(`/admin/users/${userForm.value.id}`, 'PUT', payload)
+        } else {
+          await request('/admin/users/', 'POST', payload)
+        }
+        showAddUserModal.value = false
+        await loadUsers()
+      } catch (error) {
+        userFormError.value = error.response?.data?.message || '保存失败'
+      } finally {
+        userSaving.value = false
+      }
+    }
+
+    const deleteUser = async (user) => {
+      if (user.role === 'admin' && user.username === currentUser.value?.username) {
         alert('无法删除当前登录的管理员账号')
         return
       }
-      
-      if (confirm(`确定要删除用户 ${userToDelete?.username || ''} 吗？`)) {
-        users.value = users.value.filter(u => u.id !== id)
-        userCount.value--
-        alert('用户已删除')
+      if (!confirm(`确定要删除用户 ${user.username} 吗？`)) return
+
+      try {
+        await request(`/admin/users/${user.id}`, 'DELETE')
+        await loadUsers()
+      } catch (error) {
+        alert('删除失败: ' + (error.response?.data?.message || error.message))
       }
     }
     
@@ -487,6 +865,17 @@ export default {
       showAddResourceModal,
       showAddNodeModal,
       showAddUserModal,
+      userForm,
+      userFormError,
+      userSaving,
+      kgCategories,
+      nodeForm,
+      nodeFormError,
+      nodeSaving,
+      openAddNodeModal,
+      onCategoryChange,
+      saveNode,
+      nodeTypeLabel,
       filteredPosts,
       formatDate,
       editResource,
@@ -497,7 +886,20 @@ export default {
       approvePost,
       deletePost,
       editUser,
-      deleteUser
+      deleteUser,
+      saveUser,
+      loadUsers,
+      // AI 配置
+      aiConfig,
+      aiConfigSavedKey,
+      aiConfigSaving,
+      aiConfigTesting,
+      aiConfigMessage,
+      aiConfigMessageType,
+      loadAiConfig,
+      saveAiConfig,
+      testAiConnection,
+      clearAiConfig,
     }
   }
 }
@@ -724,6 +1126,16 @@ export default {
   color: var(--info-color);
 }
 
+.status-badge.active {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+}
+
+.status-badge.inactive {
+  background-color: rgba(107, 114, 128, 0.1);
+  color: var(--light-text);
+}
+
 /* 按钮样式 */
 .btn {
   padding: 0.5rem 1rem;
@@ -794,6 +1206,29 @@ export default {
   cursor: not-allowed;
 }
 
+/* 表格操作栏按钮：确保颜色可见 */
+.admin-table .btn-sm.btn-info {
+  background-color: #3B82F6 !important;
+  color: #fff !important;
+  padding: 0.3rem 0.5rem;
+  margin-right: 0.4rem;
+}
+.admin-table .btn-sm.btn-info:hover {
+  background-color: #2563EB !important;
+}
+.admin-table .btn-sm.btn-danger {
+  background-color: #EF4444 !important;
+  color: #fff !important;
+  padding: 0.3rem 0.5rem;
+}
+.admin-table .btn-sm.btn-danger:hover {
+  background-color: #DC2626 !important;
+}
+.admin-table .btn-sm.btn-danger:disabled {
+  background-color: #9CA3AF !important;
+  color: #fff !important;
+}
+
 .btn-warning {
   background-color: var(--warning-color);
   color: white;
@@ -801,6 +1236,78 @@ export default {
 
 .btn-warning:hover {
   background-color: #D97706;
+}
+
+/* AI 配置表单 */
+.ai-config-form {
+  max-width: 600px;
+}
+
+.ai-config-form .form-group {
+  margin-bottom: 1.25rem;
+}
+
+.ai-config-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--text-color);
+  font-size: 0.95rem;
+}
+
+.ai-config-form input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.ai-config-form input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.ai-config-form .key-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--success-color);
+}
+
+.ai-config-form .form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.ai-config-hint {
+  font-size: 0.85rem;
+  color: var(--light-text);
+  background: rgba(200, 16, 46, 0.05);
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+}
+
+.config-message {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.config-message.success {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+}
+
+.config-message.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
 }
 
 /* 响应式调整 */
@@ -822,5 +1329,122 @@ export default {
     display: block;
     overflow-x: auto;
   }
+}
+
+/* 节点描述列截断 */
+.node-desc {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--light-text);
+  font-size: 0.85rem;
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--text-color);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--light-text);
+  padding: 0;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: var(--text-color);
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-body .form-group {
+  margin-bottom: 1rem;
+}
+
+.modal-body label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+
+.modal-body .required {
+  color: var(--danger-color);
+}
+
+.modal-body input,
+.modal-body select,
+.modal-body textarea {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.modal-body input:focus,
+.modal-body select:focus,
+.modal-body textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.modal-body .error-message {
+  background: #fef2f2;
+  color: var(--danger-color);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color);
 }
 </style>

@@ -3,8 +3,8 @@ from datetime import timedelta
 
 
 class Config:
-    # 数据库配置 - 根据实际环境调整
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:Tqr20070107%40@localhost/huxiang_culture?charset=utf8mb4'
+    # 数据库配置 - 通过环境变量 DATABASE_URL 传入，本地开发可在 backend/.env 中设置
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:root@localhost/huxiang_culture?charset=utf8mb4'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # 密钥配置

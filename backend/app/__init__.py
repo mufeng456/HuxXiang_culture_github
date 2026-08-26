@@ -23,10 +23,12 @@ def create_app():
 
     from routes.auth import auth_bp
     from routes.cultural_resources import cultural_resources_bp
+    from routes.knowledge import knowledge_bp
     from routes.main import main_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(cultural_resources_bp)
+    app.register_blueprint(knowledge_bp)
     app.register_blueprint(auth_bp)
 
     @app.errorhandler(Exception)
@@ -40,8 +42,11 @@ def create_app():
     @app.shell_context_processor
     def make_shell_context():
         from models.cultural_resource import CulturalResource
+        from models.knowledge import KnowledgeCategory, KnowledgeNode, KnowledgeRelationship
         from models.user import User
 
-        return {"db": db, "User": User, "CulturalResource": CulturalResource}
+        return {"db": db, "User": User, "CulturalResource": CulturalResource,
+                "KnowledgeCategory": KnowledgeCategory, "KnowledgeNode": KnowledgeNode,
+                "KnowledgeRelationship": KnowledgeRelationship}
 
     return app

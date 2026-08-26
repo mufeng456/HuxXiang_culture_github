@@ -18,7 +18,6 @@ backend/
 |   `-- internal/
 |-- models/
 |   |-- cultural_resource.py
-|   |-- test_belong_hai.py
 |   `-- user.py
 |-- routes/
 |   |-- auth.py
@@ -45,15 +44,13 @@ backend/
 - `GET /api/resources/`
 - `GET /api/resources/<id>`
 - `POST /api/resources/`
-- `PUT /api/resources/<id>`
-- `DELETE /api/resources/<id>`
 - `POST /api/resources/<id>/like`
 
 ### Gin
 
 - All community post APIs under `/api/community`
 
-See [go_post_service/README.md](D:\project_hutb\HuXiang_culture\backend\go_post_service\README.md) for the Gin service routes and configuration.
+See [go_post_service/README.md](go_post_service/README.md) for the Gin service routes and configuration.
 
 ## Running The Services
 

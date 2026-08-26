@@ -150,7 +150,7 @@ const router = useRouter()
 
 // 分类配置
 const categories = [
-  { name: '文化问答', icon: 'fas fa-question-circle' },
+  { name: '综合问答', icon: 'fas fa-question-circle' },
   { name: '历史人物', icon: 'fas fa-user-circle' },
   { name: '文化遗产', icon: 'fas fa-university' },
   { name: '传统习俗', icon: 'fas fa-calendar-alt' },
@@ -159,8 +159,8 @@ const categories = [
 ]
 
 // 状态
-const currentCategory = ref('文化问答')
-const selectedCategory = ref('文化问答')
+const currentCategory = ref('综合问答')
+const selectedCategory = ref('综合问答')
 const currentConversationId = ref(null)
 const conversations = ref([])
 const messages = ref([])
@@ -191,10 +191,16 @@ const renderMarkdown = (text) => {
   if (!text) return ''
   // 转义 HTML
   let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  // 加粗 **text**
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-  // 斜体 *text*
-  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
+  // 处理未闭合的 **（流式输出时可能只有开头）
+  const boldCount = (html.match(/\*\*/g) || []).length
+  if (boldCount % 2 === 1) {
+    const lastIdx = html.lastIndexOf('**')
+    html = html.slice(0, lastIdx) + html.slice(lastIdx + 2)
+  }
+  // 加粗 **text**（支持跨行）
+  html = html.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>')
+  // 斜体 *text*（避免匹配到 ** 的部分）
+  html = html.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>')
   // 无序列表 - item
   const lines = html.split('\n')
   let inList = false

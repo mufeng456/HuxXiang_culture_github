@@ -23,6 +23,8 @@ def create_app():
 
     from routes.auth import auth_bp
     from routes.cultural_resources import cultural_resources_bp
+    from routes.knowledge import knowledge_bp
+    from routes.admin_users import admin_users_bp
     from routes.ai import ai_bp
     from routes.admin_ai_config import admin_ai_config_bp
     from routes.main import main_bp
@@ -30,6 +32,8 @@ def create_app():
     app.register_blueprint(main_bp)
     app.register_blueprint(cultural_resources_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(knowledge_bp)
+    app.register_blueprint(admin_users_bp)
     app.register_blueprint(ai_bp)
     app.register_blueprint(admin_ai_config_bp)
 

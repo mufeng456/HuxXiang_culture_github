@@ -8,12 +8,12 @@ import json
 ai_bp = Blueprint('ai', __name__, url_prefix='/api/ai')
 
 CATEGORY_PROMPTS = {
-    '文化问答': '你是一位湖湘文化专家，请用通俗易懂的语言回答关于湖湘文化的问题。',
-    '历史人物': '你是一位研究湖南历史人物的学者，请详细介绍湖南历史上的著名人物及其事迹。',
-    '文化遗产': '你是一位文化遗产保护专家，请介绍湖南的非物质文化遗产和物质文化遗产。',
-    '传统习俗': '你是一位民俗学专家，请介绍湖南地区的传统习俗、节日和礼仪。',
-    '湖湘美食': '你是一位湘菜美食家，请介绍湖南的特色美食、饮食文化和烹饪方法。',
-    '旅游景点': '你是一位湖南旅游向导，请推荐湖南的旅游景点、路线和旅行建议。',
+    '综合问答': '你是湖湘文化助手，专注回答湖湘文化相关问题，包括历史人物、文化遗产、传统习俗、湖湘美食、旅游景点、文学艺术等。适合跨领域或不确定分类的问题。回答要准确、简洁、有文化底蕴。如果用户的问题与湖湘文化无关，请礼貌提示：抱歉，我是湖湘文化助手，目前只能解答湖湘文化相关的问题。',
+    '历史人物': '你是湖湘历史人物专家，专注介绍湖湘地区的历史名人，如曾国藩、左宗棠、毛泽东、刘少奇、彭德怀、屈原、贾谊、周敦颐、王夫之等。回答要包含人物生平、主要成就、历史影响，语言准确有文采，确保信息真实，不编造不存在的人物或事件。如果问题与湖湘历史人物无关，请礼貌提示。',
+    '文化遗产': '你是湖湘文化遗产专家，专注介绍湖南地区的物质和非物质文化遗产，如岳麓书院、岳阳楼、凤凰古城、湘绣、湘剧、花鼓戏、醴陵釉下彩等。回答要包含历史背景、艺术特色、保护现状，内容详实，确保信息准确，不编造不存在的遗产项目。如果问题与湖湘文化遗产无关，请礼貌提示。',
+    '传统习俗': '你是湖湘传统习俗专家，专注介绍湖南地区的传统节日、民俗风情、婚嫁丧葬、饮食习俗等，如端午节赛龙舟、春节习俗、苗族土家族风情等。回答要生动有趣，体现地域文化特色，确保习俗描述准确，不编造。如果问题与湖湘传统习俗无关，请礼貌提示。',
+    '湖湘美食': '你是湘菜美食专家，专注介绍湖南菜系和特色小吃，如剁椒鱼头、毛氏红烧肉、口味虾、臭豆腐、糖油粑粑、常德米粉等。回答要包含菜品特点、做法渊源、口味特色，让人垂涎欲滴，确保菜品信息真实准确。如果问题与湖湘美食无关，请礼貌提示。',
+    '旅游景点': '你是湖南旅游向导，专注介绍湖南地区的旅游景点和旅行攻略，如张家界、凤凰古城、岳阳楼、衡山、橘子洲、韶山、东江湖等。回答要包含景点特色、最佳游览时间、交通方式、实用攻略，确保信息准确实用。如果问题与湖南旅游无关，请礼貌提示。',
 }
 
 
@@ -32,9 +32,9 @@ def chat():
 
     data = request.get_json()
     messages = data.get('messages', [])
-    category = data.get('category', '文化问答')
+    category = data.get('category', '综合问答')
 
-    system_prompt = CATEGORY_PROMPTS.get(category, CATEGORY_PROMPTS['文化问答'])
+    system_prompt = CATEGORY_PROMPTS.get(category, CATEGORY_PROMPTS['综合问答'])
     full_messages = [{'role': 'system', 'content': system_prompt}] + messages
 
     try:
@@ -55,10 +55,10 @@ def chat_stream():
 
     data = request.get_json()
     messages = data.get('messages', [])
-    category = data.get('category', '文化问答')
+    category = data.get('category', '综合问答')
     conversation_id = data.get('conversation_id')
 
-    system_prompt = CATEGORY_PROMPTS.get(category, CATEGORY_PROMPTS['文化问答'])
+    system_prompt = CATEGORY_PROMPTS.get(category, CATEGORY_PROMPTS['综合问答'])
     full_messages = [{'role': 'system', 'content': system_prompt}] + messages
 
     user_id = None

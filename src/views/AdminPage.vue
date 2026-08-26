@@ -376,9 +376,15 @@
           </div>
           <div class="ai-config-form">
             <div v-if="aiConfigMessage" :class="['config-message', aiConfigMessageType]">{{ aiConfigMessage }}</div>
-            <div class="form-group">
-              <label>服务商名称</label>
-              <input type="text" v-model="aiConfig.provider_name" placeholder="如：OpenAI / 豆包 / 通义千问" />
+            <div class="form-row">
+              <div class="form-group">
+                <label>服务商名称</label>
+                <input type="text" v-model="aiConfig.provider_name" placeholder="如：OpenAI / 豆包 / 通义千问" />
+              </div>
+              <div class="form-group">
+                <label>模型名称</label>
+                <input type="text" v-model="aiConfig.model" placeholder="如：gpt-3.5-turbo / doubao-pro / qwen-turbo" />
+              </div>
             </div>
             <div class="form-group">
               <label>API Base URL</label>
@@ -388,10 +394,6 @@
               <label>API Key</label>
               <input type="password" v-model="aiConfig.api_key" placeholder="输入 API Key（留空则不修改）" />
               <span v-if="aiConfigSavedKey" class="key-hint">当前已配置：****{{ aiConfigSavedKey }}</span>
-            </div>
-            <div class="form-group">
-              <label>模型名称</label>
-              <input type="text" v-model="aiConfig.model" placeholder="如：gpt-3.5-turbo / doubao-pro / qwen-turbo" />
             </div>
             <div class="form-actions">
               <button class="btn btn-primary" @click="saveAiConfig" :disabled="aiConfigSaving">
@@ -906,7 +908,7 @@ export default {
 </script>
 
 <style scoped>
-:root {
+.admin-page {
   --primary-color: #C8102E; /* 湘红 */
   --secondary-color: #1E40AF; /* 湘蓝 */
   --accent-color: #D97706; /* 湘金 */
@@ -1240,7 +1242,19 @@ export default {
 
 /* AI 配置表单 */
 .ai-config-form {
-  max-width: 600px;
+  max-width: 960px;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 2.5rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.ai-config-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
 }
 
 .ai-config-form .form-group {
@@ -1282,6 +1296,8 @@ export default {
   display: flex;
   gap: 0.75rem;
   margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-color);
   flex-wrap: wrap;
 }
 

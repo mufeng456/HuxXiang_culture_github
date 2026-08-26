@@ -69,6 +69,13 @@
         >
           <i class="fas fa-users"></i> 用户管理
         </button>
+        <button 
+          class="tab-button" 
+          :class="{ active: activeTab === 'ai-config' }"
+          @click="activeTab = 'ai-config'"
+        >
+          <i class="fas fa-robot"></i> AI配置
+        </button>
       </div>
 
       <!-- 管理内容区域 -->
@@ -360,6 +367,45 @@
             </table>
           </div>
         </div>
+
+        <!-- AI配置管理 -->
+        <div v-if="activeTab === 'ai-config'" class="tab-content">
+          <div class="content-header">
+            <h2>AI 服务商配置</h2>
+            <span class="ai-config-hint">兼容 OpenAI 格式的服务商（OpenAI / 豆包 / 通义千问等）</span>
+          </div>
+          <div class="ai-config-form">
+            <div v-if="aiConfigMessage" :class="['config-message', aiConfigMessageType]">{{ aiConfigMessage }}</div>
+            <div class="form-group">
+              <label>服务商名称</label>
+              <input type="text" v-model="aiConfig.provider_name" placeholder="如：OpenAI / 豆包 / 通义千问" />
+            </div>
+            <div class="form-group">
+              <label>API Base URL</label>
+              <input type="text" v-model="aiConfig.api_base_url" placeholder="https://api.openai.com/v1" />
+            </div>
+            <div class="form-group">
+              <label>API Key</label>
+              <input type="password" v-model="aiConfig.api_key" placeholder="输入 API Key（留空则不修改）" />
+              <span v-if="aiConfigSavedKey" class="key-hint">当前已配置：****{{ aiConfigSavedKey }}</span>
+            </div>
+            <div class="form-group">
+              <label>模型名称</label>
+              <input type="text" v-model="aiConfig.model" placeholder="如：gpt-3.5-turbo / doubao-pro / qwen-turbo" />
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" @click="saveAiConfig" :disabled="aiConfigSaving">
+                <i class="fas fa-save"></i> {{ aiConfigSaving ? '保存中...' : '保存配置' }}
+              </button>
+              <button class="btn btn-outline" @click="testAiConnection" :disabled="aiConfigTesting">
+                <i class="fas fa-plug"></i> {{ aiConfigTesting ? '测试中...' : '测试连接' }}
+              </button>
+              <button class="btn btn-danger" @click="clearAiConfig">
+                <i class="fas fa-trash"></i> 清除配置
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -460,6 +506,14 @@ export default {
     const nodeForm = ref({ id: null, name: '', description: '', category: '历史人物', node_type: 'person', color: '#2ecc71' })
     const nodeFormError = ref('')
     const nodeSaving = ref(false)
+
+    // AI 配置
+    const aiConfig = ref({ provider_name: 'OpenAI', api_base_url: 'https://api.openai.com/v1', api_key: '', model: 'gpt-3.5-turbo' })
+    const aiConfigSavedKey = ref('')
+    const aiConfigSaving = ref(false)
+    const aiConfigTesting = ref(false)
+    const aiConfigMessage = ref('')
+    const aiConfigMessageType = ref('')
     
     // 计算过滤后的帖子
     const filteredPosts = computed(() => {
@@ -518,8 +572,85 @@ export default {
           currentUser.value = JSON.parse(storedUser)
           user.value = currentUser.value
         }
+
+        // 加载 AI 配置
+        await loadAiConfig()
       } catch (error) {
         console.error('加载管理数据失败:', error)
+      }
+    }
+
+    // AI 配置操作
+    const loadAiConfig = async () => {
+      try {
+        const res = await request('/admin/ai-config/', 'GET')
+        if (res) {
+          aiConfig.value.provider_name = res.provider_name || 'OpenAI'
+          aiConfig.value.api_base_url = res.api_base_url || 'https://api.openai.com/v1'
+          aiConfig.value.model = res.model || 'gpt-3.5-turbo'
+          aiConfigSavedKey.value = res.api_key || ''
+          aiConfig.value.api_key = ''
+        }
+      } catch (e) {
+        console.error('加载AI配置失败', e)
+      }
+    }
+
+    const saveAiConfig = async () => {
+      aiConfigSaving.value = true
+      aiConfigMessage.value = ''
+      try {
+        const payload = {
+          provider_name: aiConfig.value.provider_name,
+          api_base_url: aiConfig.value.api_base_url,
+          model: aiConfig.value.model,
+        }
+        if (aiConfig.value.api_key) {
+          payload.api_key = aiConfig.value.api_key
+        }
+        const res = await request('/admin/ai-config/', 'PUT', payload)
+        aiConfigSavedKey.value = res.config?.api_key || ''
+        aiConfig.value.api_key = ''
+        aiConfigMessage.value = '配置保存成功！'
+        aiConfigMessageType.value = 'success'
+      } catch (e) {
+        aiConfigMessage.value = '保存失败：' + (e.response?.data?.error || e.message || '未知错误')
+        aiConfigMessageType.value = 'error'
+      } finally {
+        aiConfigSaving.value = false
+        setTimeout(() => { aiConfigMessage.value = '' }, 3000)
+      }
+    }
+
+    const testAiConnection = async () => {
+      aiConfigTesting.value = true
+      aiConfigMessage.value = ''
+      try {
+        const res = await request('/admin/ai-config/test', 'POST')
+        aiConfigMessage.value = '连接成功！AI回复：' + (res.reply || '')
+        aiConfigMessageType.value = 'success'
+      } catch (e) {
+        aiConfigMessage.value = '连接失败：' + (e.response?.data?.error || e.message || '未知错误')
+        aiConfigMessageType.value = 'error'
+      } finally {
+        aiConfigTesting.value = false
+        setTimeout(() => { aiConfigMessage.value = '' }, 5000)
+      }
+    }
+
+    const clearAiConfig = async () => {
+      if (!confirm('确定清除 AI 配置吗？清除后 AI 助手将无法使用。')) return
+      try {
+        await request('/admin/ai-config/', 'DELETE')
+        aiConfig.value = { provider_name: 'OpenAI', api_base_url: 'https://api.openai.com/v1', api_key: '', model: 'gpt-3.5-turbo' }
+        aiConfigSavedKey.value = ''
+        aiConfigMessage.value = '配置已清除'
+        aiConfigMessageType.value = 'success'
+      } catch (e) {
+        aiConfigMessage.value = '清除失败'
+        aiConfigMessageType.value = 'error'
+      } finally {
+        setTimeout(() => { aiConfigMessage.value = '' }, 3000)
       }
     }
     
@@ -757,7 +888,18 @@ export default {
       editUser,
       deleteUser,
       saveUser,
-      loadUsers
+      loadUsers,
+      // AI 配置
+      aiConfig,
+      aiConfigSavedKey,
+      aiConfigSaving,
+      aiConfigTesting,
+      aiConfigMessage,
+      aiConfigMessageType,
+      loadAiConfig,
+      saveAiConfig,
+      testAiConnection,
+      clearAiConfig,
     }
   }
 }
@@ -1094,6 +1236,78 @@ export default {
 
 .btn-warning:hover {
   background-color: #D97706;
+}
+
+/* AI 配置表单 */
+.ai-config-form {
+  max-width: 600px;
+}
+
+.ai-config-form .form-group {
+  margin-bottom: 1.25rem;
+}
+
+.ai-config-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--text-color);
+  font-size: 0.95rem;
+}
+
+.ai-config-form input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.ai-config-form input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.ai-config-form .key-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--success-color);
+}
+
+.ai-config-form .form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.ai-config-hint {
+  font-size: 0.85rem;
+  color: var(--light-text);
+  background: rgba(200, 16, 46, 0.05);
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+}
+
+.config-message {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.config-message.success {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+}
+
+.config-message.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
 }
 
 /* 响应式调整 */

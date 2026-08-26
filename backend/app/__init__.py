@@ -25,6 +25,8 @@ def create_app():
     from routes.cultural_resources import cultural_resources_bp
     from routes.knowledge import knowledge_bp
     from routes.admin_users import admin_users_bp
+    from routes.ai import ai_bp
+    from routes.admin_ai_config import admin_ai_config_bp
     from routes.main import main_bp
 
     app.register_blueprint(main_bp)
@@ -32,6 +34,8 @@ def create_app():
     app.register_blueprint(knowledge_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_users_bp)
+    app.register_blueprint(ai_bp)
+    app.register_blueprint(admin_ai_config_bp)
 
     @app.errorhandler(Exception)
     def handle_exception(e):
@@ -46,9 +50,12 @@ def create_app():
         from models.cultural_resource import CulturalResource
         from models.knowledge import KnowledgeCategory, KnowledgeNode, KnowledgeRelationship
         from models.user import User
+        from models.ai_config import AIConfig
+        from models.conversation import Conversation, Message
 
         return {"db": db, "User": User, "CulturalResource": CulturalResource,
                 "KnowledgeCategory": KnowledgeCategory, "KnowledgeNode": KnowledgeNode,
-                "KnowledgeRelationship": KnowledgeRelationship}
+                "KnowledgeRelationship": KnowledgeRelationship,
+                "AIConfig": AIConfig, "Conversation": Conversation, "Message": Message}
 
     return app

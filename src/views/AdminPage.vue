@@ -69,6 +69,13 @@
         >
           <i class="fas fa-users"></i> 用户管理
         </button>
+        <button 
+          class="tab-button" 
+          :class="{ active: activeTab === 'ai-config' }"
+          @click="activeTab = 'ai-config'; loadAIConfig()"
+        >
+          <i class="fas fa-robot"></i> AI配置
+        </button>
       </div>
 
       <!-- 管理内容区域 -->
@@ -261,14 +268,83 @@
             </table>
           </div>
         </div>
+
+        <!-- AI 配置 -->
+        <div v-if="activeTab === 'ai-config'" class="tab-content">
+          <div class="content-header">
+            <h2>AI 服务商配置</h2>
+            <div class="header-actions">
+              <button class="btn btn-outline" @click="testAIConnection" :disabled="aiConfigTesting">
+                <i class="fas fa-plug"></i> {{ aiConfigTesting ? '测试中...' : '测试连接' }}
+              </button>
+              <button class="btn btn-danger-outline" @click="clearAIConfig" :disabled="aiConfigSaving">
+                <i class="fas fa-eraser"></i> 清除配置
+              </button>
+              <button class="btn btn-primary" @click="saveAIConfig" :disabled="aiConfigSaving">
+                <i class="fas fa-save"></i> {{ aiConfigSaving ? '保存中...' : '保存配置' }}
+              </button>
+            </div>
+          </div>
+
+          <div v-if="aiConfigError" class="ai-config-error">{{ aiConfigError }}</div>
+          <div v-if="aiConfigSuccess" class="ai-config-success">{{ aiConfigSuccess }}</div>
+
+          <div class="ai-config-card">
+            <div class="ai-config-card-header">
+              <i class="fas fa-robot"></i>
+              <div>
+                <h3>大模型接口配置</h3>
+                <p>支持所有 OpenAI 兼容格式的服务商（豆包、通义千问、文心一言、OpenAI 等）</p>
+              </div>
+            </div>
+
+            <div class="ai-config-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>服务商预设</label>
+                  <select v-model="selectedPreset" @change="applyPreset">
+                    <option value="">手动配置</option>
+                    <option v-for="p in aiPresets" :key="p.name" :value="p.name">{{ p.name }}</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>服务商名称</label>
+                  <input type="text" v-model="aiConfig.provider_name" placeholder="如：字节豆包" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>接口地址 (Base URL)</label>
+                <input type="text" v-model="aiConfig.api_base_url" placeholder="https://ark.cn-beijing.volces.com/api/v3" />
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>模型名称</label>
+                  <input type="text" v-model="aiConfig.model" placeholder="如：doubao-pro-32k" />
+                </div>
+                <div class="form-group">
+                  <label>API Key</label>
+                  <input type="text" v-model="aiConfig.api_key" placeholder="输入 API Key" />
+                </div>
+              </div>
+
+              <div class="ai-config-hint">
+                <i class="fas fa-info-circle"></i>
+                <span>配置保存后立即生效，无需重启。API Key 已脱敏存储，仅显示后4位。</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { request } from '../services/api'
 
 // 模拟数据服务
 const mockAdminService = {
@@ -343,6 +419,35 @@ export default {
     const showAddResourceModal = ref(false)
     const showAddNodeModal = ref(false)
     const showAddUserModal = ref(false)
+
+    // AI 配置
+    const aiPresets = [
+      { name: '字节豆包', api_base_url: 'https://ark.cn-beijing.volces.com/api/v3', model: 'doubao-pro-32k' },
+      { name: '阿里通义千问', api_base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-turbo' },
+      { name: '百度文心一言', api_base_url: 'https://qianfan.baidubce.com/v2', model: 'ernie-3.5-turbo' },
+      { name: 'OpenAI', api_base_url: 'https://api.openai.com/v1', model: 'gpt-3.5-turbo' },
+    ]
+    const selectedPreset = ref('')
+    const aiConfig = ref({
+      provider_name: '',
+      api_base_url: '',
+      api_key: '',
+      model: '',
+    })
+    const aiConfigSaving = ref(false)
+    const aiConfigTesting = ref(false)
+    const aiConfigError = ref('')
+    const aiConfigSuccess = ref('')
+
+    const applyPreset = () => {
+      if (!selectedPreset.value) return
+      const preset = aiPresets.find(p => p.name === selectedPreset.value)
+      if (preset) {
+        aiConfig.value.provider_name = preset.name
+        aiConfig.value.api_base_url = preset.api_base_url
+        aiConfig.value.model = preset.model
+      }
+    }
     
     // 计算过滤后的帖子
     const filteredPosts = computed(() => {
@@ -465,7 +570,91 @@ export default {
         alert('用户已删除')
       }
     }
-    
+
+    // AI 配置操作
+    const toggleProvider = (key) => {
+      expandedProvider.value = expandedProvider.value === key ? '' : key
+    }
+
+    const loadAIConfig = async () => {
+      aiConfigError.value = ''
+      aiConfigSuccess.value = ''
+      try {
+        const res = await request('/admin/ai-config/', 'GET')
+        aiConfig.value = {
+          provider_name: res.provider_name || '',
+          api_base_url: res.api_base_url || '',
+          api_key: res.api_key || '',
+          model: res.model || '',
+        }
+        // 匹配预设
+        const match = aiPresets.find(p => p.api_base_url === res.api_base_url)
+        selectedPreset.value = match ? match.name : ''
+      } catch (error) {
+        aiConfigError.value = error.response?.data?.message || '加载配置失败'
+      }
+    }
+
+    const saveAIConfig = async () => {
+      aiConfigError.value = ''
+      aiConfigSuccess.value = ''
+      aiConfigSaving.value = true
+      try {
+        await request('/admin/ai-config/', 'PUT', { ...aiConfig.value })
+        aiConfigSuccess.value = '配置保存成功，已立即生效'
+        setTimeout(() => { aiConfigSuccess.value = '' }, 3000)
+      } catch (error) {
+        aiConfigError.value = error.message || '保存失败'
+      } finally {
+        aiConfigSaving.value = false
+      }
+    }
+
+    const testAIConnection = async () => {
+      aiConfigError.value = ''
+      aiConfigSuccess.value = ''
+      aiConfigTesting.value = true
+      try {
+        const res = await request('/admin/ai-config/test', 'POST', {})
+        aiConfigSuccess.value = `连接成功！AI 回复：${res.reply || res.message}`
+        setTimeout(() => { aiConfigSuccess.value = '' }, 5000)
+      } catch (error) {
+        aiConfigError.value = `连接失败：${error.message || '未知错误'}`
+      } finally {
+        aiConfigTesting.value = false
+      }
+    }
+
+    const clearAIConfig = async () => {
+      if (!confirm('确定要清除所有 AI 配置吗？API Key 将被清空。')) return
+      aiConfigError.value = ''
+      aiConfigSuccess.value = ''
+      aiConfigSaving.value = true
+      try {
+        const res = await request('/admin/ai-config/', 'DELETE')
+        aiConfig.value = {
+          provider_name: res.config.provider_name,
+          api_base_url: res.config.api_base_url,
+          api_key: res.config.api_key,
+          model: res.config.model,
+        }
+        selectedPreset.value = ''
+        aiConfigSuccess.value = '配置已清除'
+        setTimeout(() => { aiConfigSuccess.value = '' }, 3000)
+      } catch (error) {
+        aiConfigError.value = error.message || '清除失败'
+      } finally {
+        aiConfigSaving.value = false
+      }
+    }
+
+    // 切换到 AI 配置 Tab 时加载配置
+    watch(activeTab, (newTab) => {
+      if (newTab === 'ai-config') {
+        loadAIConfig()
+      }
+    })
+
     // 页面加载时获取数据
     onMounted(() => {
       loadData()
@@ -497,7 +686,19 @@ export default {
       approvePost,
       deletePost,
       editUser,
-      deleteUser
+      deleteUser,
+      aiPresets,
+      selectedPreset,
+      aiConfig,
+      aiConfigSaving,
+      aiConfigTesting,
+      aiConfigError,
+      aiConfigSuccess,
+      applyPreset,
+      loadAIConfig,
+      saveAIConfig,
+      testAIConnection,
+      clearAIConfig
     }
   }
 }
@@ -822,5 +1023,177 @@ export default {
     display: block;
     overflow-x: auto;
   }
+}
+
+/* AI 配置样式 - 项目主题 */
+.ai-config-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  width: 100%;
+}
+
+.ai-config-card-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, #C8102E 0%, #8B0A1F 100%);
+  color: white;
+}
+
+.ai-config-card-header i {
+  font-size: 2rem;
+  opacity: 0.9;
+}
+
+.ai-config-card-header h3 {
+  margin: 0 0 0.2rem 0;
+  font-size: 1.15rem;
+}
+
+.ai-config-card-header p {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.ai-config-body {
+  padding: 2rem;
+}
+
+.ai-config-body .form-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.ai-config-body .form-row .form-group {
+  flex: 1;
+}
+
+.ai-config-body .form-group {
+  margin-bottom: 1.2rem;
+}
+
+.ai-config-body label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+
+.ai-config-body input,
+.ai-config-body select {
+  width: 100%;
+  padding: 0.65rem 0.85rem !important;
+  border: 1.5px solid #E5E7EB !important;
+  border-radius: 8px !important;
+  font-size: 0.9rem !important;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+  background: white !important;
+  color: var(--text-color) !important;
+}
+
+.ai-config-body input:focus,
+.ai-config-body select:focus {
+  outline: none !important;
+  border-color: #C8102E !important;
+  box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.1) !important;
+}
+
+.ai-config-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding: 0.8rem 1rem;
+  background: rgba(30, 64, 175, 0.06);
+  border-left: 3px solid var(--secondary-color);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--light-text);
+}
+
+.ai-config-hint i {
+  color: var(--secondary-color);
+}
+
+.ai-config-error {
+  background: #fef2f2;
+  color: #C8102E;
+  padding: 0.85rem 1.2rem;
+  border-radius: 8px;
+  margin-bottom: 1.2rem;
+  font-size: 0.9rem;
+  border-left: 3px solid #C8102E;
+}
+
+.ai-config-success {
+  background: #ecfdf5;
+  color: #059669;
+  padding: 0.85rem 1.2rem;
+  border-radius: 8px;
+  margin-bottom: 1.2rem;
+  font-size: 0.9rem;
+  border-left: 3px solid #059669;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.btn-outline {
+  background: white;
+  color: #4B5563;
+  border: 1.5px solid #D1D5DB;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-outline:hover:not(:disabled) {
+  border-color: #C8102E;
+  color: #C8102E;
+}
+
+.btn-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-danger-outline {
+  background: white;
+  color: #EF4444;
+  border: 1.5px solid #FECACA;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-danger-outline:hover:not(:disabled) {
+  background: #FEF2F2;
+  border-color: #EF4444;
+}
+
+.btn-danger-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

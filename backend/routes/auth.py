@@ -86,7 +86,7 @@ def login():
         ).first()
         
         if user and user.check_password(password) and user.is_active:
-            access_token = create_access_token(identity=user.id)
+            access_token = create_access_token(identity=str(user.id))
             return jsonify({
                 'success': True,
                 'message': '登录成功',
